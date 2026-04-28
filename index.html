@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>루미큐브 모바일</title>
+    <title>루미큐브 모바일 0.1</title>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -28,61 +28,54 @@
     --purple: #9d50bb;
     --modal-bg: #ffffff;
     --border: rgba(0,0,0,0.08);
+    /* 가로 모드에서 줄어든 값은 JS로 동적 조정 */
     --rack-height: 130px;
     --topbar-height: 52px;
     --actionbar-height: 52px;
 }
 
-/* ===== 다크 ===== */
 body[data-theme='dark'] {
     --bg: #0d0d0f; --panel: #17181c; --board-bg: #111215;
     --rack-bg: #0d0d0f; --text: #e8e8f0; --tile-bg: #d8d8e0;
     --tile-shadow: #1a1a20; --border: rgba(255,255,255,0.06);
     --modal-bg: #1c1d22;
 }
-/* ===== 핑크 ===== */
 body[data-theme='pink'] {
     --bg: #fff0f7; --panel: #ffd6e8; --board-bg: #ffe8f3;
     --rack-bg: #ffb6d4; --text: #b5005b; --tile-bg: #fff5f8;
     --tile-shadow: #e8789a; --border: rgba(255,105,180,0.2);
     --modal-bg: #fff0f7;
 }
-/* ===== 네이비 ===== */
 body[data-theme='navy'] {
     --bg: #0d1422; --panel: #162038; --board-bg: #0f1828;
     --rack-bg: #0d1422; --text: #eef0f8; --tile-bg: #f4f7fa;
     --tile-shadow: #748aa1; --border: rgba(107,147,201,0.15);
     --modal-bg: #1b2a47;
 }
-/* ===== 시나모롤 ===== */
 body[data-theme='cinnamoroll'] {
     --bg: #f2f8ff; --panel: #e1eefb; --board-bg: #eaf3fc;
     --rack-bg: #d3e3f2; --text: #5b7a99; --tile-bg: #ffffff;
     --tile-shadow: #adbccb; --border: rgba(189,206,223,0.4);
     --modal-bg: #f8fbff;
 }
-/* ===== 포챠코 ===== */
 body[data-theme='pochacco'] {
     --bg: #f0f0f8; --panel: #dcdcf0; --board-bg: #e8e8f5;
     --rack-bg: #c8c8e8; --text: #2a2a5a; --tile-bg: #ffffff;
     --tile-shadow: #6a6ab8; --border: rgba(136,136,204,0.3);
     --modal-bg: #f5f5fb;
 }
-/* ===== 빈티지 ===== */
 body[data-theme='vintage'] {
     --bg: #f5ede0; --panel: #e8d5bc; --board-bg: #ede0cc;
     --rack-bg: #d9c4a8; --text: #6b3a2a; --tile-bg: #fdf6ec;
     --tile-shadow: #a07050; --border: rgba(192,128,96,0.3);
     --modal-bg: #f5ede0;
 }
-/* ===== 키티 ===== */
 body[data-theme='kitty'] {
     --bg: #ffffff; --panel: #fff0f0; --board-bg: #fff5f5;
     --rack-bg: #ffe0e0; --text: #cc0000; --tile-bg: #ffffff;
     --tile-shadow: #cc0000; --border: rgba(204,0,0,0.15);
     --modal-bg: #ffffff;
 }
-/* ===== 사이버 ===== */
 body[data-theme='cyber'] {
     --bg: #050505; --panel: #0a0a0f; --board-bg: #08080a;
     --rack-bg: #050505; --text: #00ffcc; --tile-bg: #141e1e;
@@ -131,6 +124,15 @@ html, body {
     -webkit-overflow-scrolling: touch;
 }
 #top-bar::-webkit-scrollbar { display: none; }
+
+/* 가로 모드 상단 바 슬림 */
+@media (orientation: landscape) {
+    #top-bar { height: 38px; padding: 0 8px; gap: 4px; }
+    #action-bar { height: 40px; padding: 0 8px; gap: 6px; }
+    #rack-wrap { height: 90px; }
+    .rack-tile { top: 14px !important; }
+    .act-btn { height: 30px; font-size: 0.72rem; }
+}
 
 .p-badge {
     display: inline-flex;
@@ -192,6 +194,7 @@ html, body {
     background: var(--board-bg);
     background-image: radial-gradient(circle, rgba(128,128,128,0.12) 1px, transparent 1px);
     background-size: 44px 44px;
+    /* ★ 관전자/비턴 중에도 터치 이벤트는 허용 (패닝/줌 위해) */
     touch-action: none;
 }
 body[data-theme='dark'] #board-wrap {
@@ -219,7 +222,11 @@ body[data-theme='cyber'] #board-wrap {
     transform-origin: 0 0;
 }
 
-/* 보드에서 타겟 드롭 존 오버레이 (탭 배치 모드) */
+/* 비턴 / 관전자: 보드 딤 처리만, 포인터이벤트는 유지 */
+#board-wrap.not-my-turn {
+    opacity: 0.80;
+}
+
 #drop-indicator {
     position: absolute;
     width: 44px; height: 64px;
@@ -232,7 +239,7 @@ body[data-theme='cyber'] #board-wrap {
 }
 
 /* ===========================
-   액션 바 (완료/무르기/뽑기)
+   액션 바
 =========================== */
 #action-bar {
     height: var(--actionbar-height);
@@ -266,6 +273,17 @@ body[data-theme='cyber'] #board-wrap {
 #btn-back-m  { background: rgba(128,128,128,0.25); color: var(--text); }
 #btn-hint-m  { background: var(--gold); color: #000; }
 #btn-chat-m  { background: var(--purple); min-width: 36px; max-width: 36px; flex: none; font-size: 1rem; }
+
+/* 관전자 전용 버튼 */
+#btn-spec-hand-m {
+    background: rgba(155,89,182,0.3);
+    color: var(--text);
+    border: 1.5px solid var(--purple);
+    min-width: 56px;
+    max-width: 56px;
+    flex: none;
+    font-size: 0.68rem;
+}
 
 /* ===========================
    내 패 (하단 랙)
@@ -350,10 +368,14 @@ body[data-theme='cyber'] #board-wrap {
     50%      { box-shadow: 0 0 18px 5px var(--gold); }
 }
 
-/* 랙 타일 (relative 위치) */
 .rack-tile {
     position: absolute;
     top: 35px;
+}
+@media (orientation: landscape) {
+    .tile { width: 36px; height: 52px; font-size: 1.05rem; }
+    .tile.joker { font-size: 1.25rem; }
+    .rack-tile { top: 14px; }
 }
 
 /* ===========================
@@ -472,6 +494,10 @@ body[data-theme='cyber'] #board-wrap {
     box-shadow: 0 -6px 30px rgba(0,0,0,0.2);
 }
 #chat-panel.open { transform: translateY(0); }
+
+@media (orientation: landscape) {
+    #chat-panel { height: 80vh; width: 50vw; left: auto; right: 0; border-radius: 20px 20px 0 0; }
+}
 
 #chat-panel-header {
     padding: 12px 16px 8px;
@@ -651,6 +677,40 @@ body[data-theme='cyber'] #board-wrap {
     border-color: var(--blue);
 }
 
+/* 관전자 손패 뷰어 모달 */
+#spec-hand-modal {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--panel);
+    border-top: 2px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    z-index: 45000;
+    padding: 14px 14px 20px;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+#spec-hand-modal.open { transform: translateY(0); }
+#spec-hand-modal h3 { margin: 0 0 10px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; }
+.spec-player-row { margin-bottom: 14px; }
+.spec-player-label { font-size: 0.75rem; font-weight: 800; color: var(--blue); margin-bottom: 6px; }
+.spec-tiles-wrap { display: flex; flex-wrap: wrap; gap: 4px; }
+.spec-tile {
+    width: 36px; height: 50px;
+    background: var(--tile-bg);
+    border-radius: 6px;
+    display: flex; justify-content: center; align-items: center;
+    font-weight: 900; font-size: 1rem;
+    box-shadow: 0 2px 0 var(--tile-shadow);
+    border: 1px solid rgba(0,0,0,0.08);
+}
+.spec-tile.red    { color: #e44d26; border-bottom: 3px solid #e44d26; }
+.spec-tile.blue   { color: #2980b9; border-bottom: 3px solid #2980b9; }
+.spec-tile.yellow { color: #f39c12; border-bottom: 3px solid #f39c12; }
+.spec-tile.black  { color: #2d3436; border-bottom: 3px solid #333; }
+.spec-tile.joker  { color: #8e44ad; }
+
 /* 화면 흔들기 */
 @keyframes screen-shake {
     0%,100% { transform: translate(0,0); }
@@ -666,7 +726,6 @@ body[data-theme='cyber'] #board-wrap {
 }
 .screen-shaking { animation: screen-shake 0.5s ease-in-out; }
 
-/* 핀치줌 & 패닝 안내 */
 #board-overlay-msg {
     position: absolute;
     bottom: 12px; left: 50%;
@@ -683,7 +742,7 @@ body[data-theme='cyber'] #board-wrap {
     z-index: 999;
 }
 
-/* 사이버 네온 타일 효과 */
+/* 사이버 네온 */
 body[data-theme='cyber'] .tile {
     background: rgba(20,20,30,0.95) !important;
     border: 1px solid #bc13fe !important;
@@ -694,7 +753,6 @@ body[data-theme='cyber'] .tile.red    { color: #ff0055 !important; text-shadow: 
 body[data-theme='cyber'] .tile.blue   { color: #00d4ff !important; text-shadow: 0 0 8px #00d4ff; border-bottom-color: #00d4ff !important; }
 body[data-theme='cyber'] .tile.yellow { color: #ffff00 !important; text-shadow: 0 0 8px #ffff00; border-bottom-color: #ffff00 !important; }
 body[data-theme='cyber'] .tile.black  { color: #ffffff !important; text-shadow: 0 0 5px #fff; border-bottom-color: #fff !important; }
-
 body[data-theme='dark'] .tile { background: linear-gradient(145deg,#e8e8f0,#d0d0dc) !important; }
 body[data-theme='pink'] .tile {
     background: linear-gradient(145deg,#fff5f8,#ffe4ef) !important;
@@ -707,7 +765,6 @@ body[data-theme='vintage'] .tile {
     background: linear-gradient(145deg,#fdf6ec,#f0e0c8) !important;
     filter: sepia(15%) !important;
 }
-
     </style>
 </head>
 <body data-theme="classic">
@@ -728,7 +785,7 @@ body[data-theme='vintage'] .tile {
     </div>
 
     <!-- 배치 모드 힌트 -->
-    <div id="place-mode-hint">타일을 놓을 위치를 탭하세요</div>
+    <div id="place-mode-hint">타일을 놓을 위치를 탭하세요 (다시 탭하면 취소)</div>
 
     <!-- 등록 점수 뱃지 -->
     <div id="reg-score-m"></div>
@@ -739,6 +796,8 @@ body[data-theme='vintage'] .tile {
         <button class="act-btn" id="btn-draw-m" onclick="drawTile()">뽑기</button>
         <button class="act-btn" id="btn-back-m" onclick="rollbackTurn()">무르기</button>
         <button class="act-btn" id="btn-hint-m" onclick="showHint()">힌트</button>
+        <!-- 관전자 전용: 패 보기 버튼 -->
+        <button class="act-btn" id="btn-spec-hand-m" onclick="toggleSpecHandModal()" style="display:none;">패보기</button>
         <button class="act-btn" id="btn-chat-m" onclick="toggleChatPanel()">💬</button>
     </div>
 
@@ -769,6 +828,15 @@ body[data-theme='vintage'] .tile {
                onkeydown="if(event.key==='Enter'){sendChat(); event.preventDefault();}">
         <button id="chat-send-btn" onclick="sendChat()">전송</button>
     </div>
+</div>
+
+<!-- 관전자 손패 뷰어 -->
+<div id="spec-hand-modal">
+    <h3>
+        <span>🃏 플레이어 손패</span>
+        <button onclick="toggleSpecHandModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text);">✕</button>
+    </h3>
+    <div id="spec-hand-content"></div>
 </div>
 
 <!-- 메인 오버레이 (로비 / 결과) -->
@@ -808,7 +876,7 @@ let myName = '', myRole = 'player', currentHost = '';
 let playerList = [], currentTurn = '', gameStatus = 'waiting', gameMode = 'normal';
 let myHandData = [], boardTiles = {}, initialBoardState = {};
 let sortMode = 'color', manualOrder = [];
-let selectedTileId = null; // 탭으로 선택된 랙 타일 ID
+let selectedTileId = null;
 let placeModeActive = false;
 let turnTimer = null;
 window.latestPlayersData = {};
@@ -816,7 +884,7 @@ window.lastTileCounts = {};
 window.isGameEnding = false;
 
 /* ================================================
-   사운드 (가벼운 Web Audio 기반)
+   사운드
 ================================================ */
 function playBeep(freq = 440, dur = 0.1, vol = 0.3) {
     try {
@@ -831,11 +899,11 @@ function playBeep(freq = 440, dur = 0.1, vol = 0.3) {
     } catch(e) {}
 }
 function playSFX(k) {
-    if (k === 'tilePick')  playBeep(600, 0.08, 0.2);
-    if (k === 'tileDrop')  playBeep(440, 0.1,  0.2);
-    if (k === 'error')     playBeep(200, 0.2,  0.3);
-    if (k === 'success')   playBeep(880, 0.15, 0.25);
-    if (k === 'turnAlarm') { playBeep(660, 0.1, 0.3); setTimeout(() => playBeep(880, 0.1, 0.3), 150); }
+    if (k === 'tilePick')    playBeep(600, 0.08, 0.2);
+    if (k === 'tileDrop')    playBeep(440, 0.1,  0.2);
+    if (k === 'error')       playBeep(200, 0.2,  0.3);
+    if (k === 'success')     playBeep(880, 0.15, 0.25);
+    if (k === 'turnAlarm')   { playBeep(660, 0.1, 0.3); setTimeout(() => playBeep(880, 0.1, 0.3), 150); }
     if (k === 'dangerAlarm') { playBeep(330, 0.2, 0.3); setTimeout(() => playBeep(220, 0.2, 0.3), 250); }
 }
 
@@ -869,13 +937,25 @@ function handleEntry(role, isAuto = false) {
     document.getElementById('entry-overlay').style.display = 'none';
     playSFX('success');
 
+    // 관전자 UI 설정
+    if (myRole === 'spectator') {
+        document.getElementById('rack-wrap').style.display = 'none';
+        document.getElementById('btn-spec-hand-m').style.display = 'flex';
+        ['btn-end-m','btn-draw-m','btn-back-m','btn-hint-m'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+    }
+
     db.ref('board').once('value', s => { initialBoardState = s.val() || {}; });
 
-    db.ref('hands/' + myName).on('value', snap => {
-        myHandData = Object.entries(snap.val() || {}).map(([id, val]) => ({ id, ...val }));
-        db.ref('players/' + myName).update({ tileCount: myHandData.length });
-        renderRack();
-    });
+    if (myRole === 'player') {
+        db.ref('hands/' + myName).on('value', snap => {
+            myHandData = Object.entries(snap.val() || {}).map(([id, val]) => ({ id, ...val }));
+            db.ref('players/' + myName).update({ tileCount: myHandData.length });
+            renderRack();
+        });
+    }
 }
 
 /* ================================================
@@ -889,7 +969,40 @@ function addGameLog(msg) {
 }
 
 /* ================================================
-   핀치줌 + 패닝 (보드)
+   보드 초기 뷰 자동 핏 (★ 핵심 수정)
+================================================ */
+function fitBoardToView() {
+    if (Object.keys(boardTiles).length === 0) {
+        // 타일 없으면 중앙 기준 소폭 줌아웃
+        boardScale = 0.7;
+        boardTX = 40; boardTY = 40;
+        applyBoardTransform();
+        return;
+    }
+    const xs = Object.values(boardTiles).map(t => t.x);
+    const ys = Object.values(boardTiles).map(t => t.y);
+    const minX = Math.min(...xs) - 20;
+    const minY = Math.min(...ys) - 20;
+    const maxX = Math.max(...xs) + 62;
+    const maxY = Math.max(...ys) + 80;
+
+    const bw = document.getElementById('board-wrap');
+    const W = bw.clientWidth, H = bw.clientHeight;
+    const tileW = maxX - minX, tileH = maxY - minY;
+
+    const PAD = 24;
+    const scaleX = (W - PAD * 2) / tileW;
+    const scaleY = (H - PAD * 2) / tileH;
+    boardScale = Math.min(scaleX, scaleY, 1.5);
+    boardScale = Math.max(boardScale, 0.3);
+
+    boardTX = (W - tileW * boardScale) / 2 - minX * boardScale;
+    boardTY = (H - tileH * boardScale) / 2 - minY * boardScale;
+    applyBoardTransform();
+}
+
+/* ================================================
+   핀치줌 + 패닝
 ================================================ */
 let boardScale = 1, boardTX = 0, boardTY = 0;
 let pinchDist0 = 0, pinchScale0 = 1;
@@ -904,7 +1017,7 @@ function applyBoardTransform() {
 const boardWrap = document.getElementById('board-wrap');
 
 boardWrap.addEventListener('touchstart', (e) => {
-    if (placeModeActive) return; // 배치 모드 중엔 패닝 비활성화
+    if (placeModeActive) return;
     if (e.touches.length === 2) {
         isPinching = true; isPanning = false;
         pinchDist0 = Math.hypot(
@@ -912,22 +1025,25 @@ boardWrap.addEventListener('touchstart', (e) => {
             e.touches[0].clientY - e.touches[1].clientY
         );
         pinchScale0 = boardScale;
-    } else if (e.touches.length === 1 && !selectedTileId) {
-        isPanning = true;
-        panStartX = e.touches[0].clientX;
-        panStartY = e.touches[0].clientY;
-        panTX0 = boardTX; panTY0 = boardTY;
+    } else if (e.touches.length === 1) {
+        // 관전자는 항상 패닝 가능, 플레이어는 타일 선택 안 했을 때만
+        if (!selectedTileId) {
+            isPanning = true;
+            panStartX = e.touches[0].clientX;
+            panStartY = e.touches[0].clientY;
+            panTX0 = boardTX; panTY0 = boardTY;
+        }
     }
 }, { passive: true });
 
 boardWrap.addEventListener('touchmove', (e) => {
-    if (placeModeActive) return;
+    if (placeModeActive && myRole === 'player') return;
     if (isPinching && e.touches.length === 2) {
         const dist = Math.hypot(
             e.touches[0].clientX - e.touches[1].clientX,
             e.touches[0].clientY - e.touches[1].clientY
         );
-        boardScale = Math.max(0.35, Math.min(3.5, pinchScale0 * (dist / pinchDist0)));
+        boardScale = Math.max(0.25, Math.min(3.5, pinchScale0 * (dist / pinchDist0)));
         applyBoardTransform();
     } else if (isPanning && e.touches.length === 1) {
         boardTX = panTX0 + (e.touches[0].clientX - panStartX);
@@ -953,8 +1069,6 @@ boardWrap.addEventListener('click', (e) => {
     const rawY = (e.clientY - rect.top  - boardTY) / boardScale;
 
     const TILE_W = 48, TILE_H = 68;
-
-    // 자석 스냅
     let dropX = rawX - 21, dropY = rawY - 30;
     const SNAP = 40;
     let snapped = false;
@@ -979,7 +1093,6 @@ boardWrap.addEventListener('click', (e) => {
     updates[`board/${selectedTileId}`] = { ...clean, x: dropX, y: dropY };
     updates[`hands/${myName}/${selectedTileId}`] = null;
     db.ref('/').update(updates).then(() => playSFX('tileDrop'));
-
     cancelPlaceMode();
 });
 
@@ -1039,7 +1152,6 @@ document.addEventListener('touchend', (e) => {
     } else if (onRack && dragFromBoard) {
         returnTileToRack(dragTileId);
     } else {
-        // 제자리 복귀
         renderBoard();
         renderRack();
     }
@@ -1092,6 +1204,7 @@ function returnTileToRack(tileId) {
    랙 렌더링
 ================================================ */
 function renderRack() {
+    if (myRole === 'spectator') return;
     const inner = document.getElementById('rack-inner');
     inner.querySelectorAll('.tile').forEach(t => t.remove());
 
@@ -1117,7 +1230,8 @@ function renderRack() {
         });
     }
 
-    const TILE_W = 46;
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const TILE_W = isLandscape ? 40 : 46;
     const totalW = sorted.length * TILE_W + 100;
     inner.style.width = Math.max(totalW, window.innerWidth) + 'px';
 
@@ -1135,11 +1249,9 @@ function renderRack() {
             if (myRole !== 'player' || currentTurn !== myName) return;
 
             if (selectedTileId === t.id) {
-                // 이미 선택된 타일 → 선택 해제
                 cancelPlaceMode();
                 return;
             }
-            // 타일 탭 선택 → 배치 모드 활성화
             cancelPlaceMode();
             selectedTileId = t.id;
             placeModeActive = true;
@@ -1148,9 +1260,7 @@ function renderRack() {
             playSFX('tilePick');
         });
 
-        // 터치 드래그 시작
         div.addEventListener('touchstart', (e) => {
-            // 300ms 이상 누르면 드래그로 처리
             const tid = t.id;
             const longPressTimer = setTimeout(() => {
                 cancelPlaceMode();
@@ -1180,12 +1290,12 @@ function renderBoard() {
         div.style.left = data.x + 'px';
         div.style.top  = data.y + 'px';
 
-        // 탭으로 보드 타일 → 랙으로 회수
+        // 탭으로 회수 (내 턴 플레이어만, 내가 놓은 타일만)
         div.addEventListener('click', (e) => {
             e.stopPropagation();
             if (myRole !== 'player' || currentTurn !== myName) return;
-            if (placeModeActive) return; // 배치 모드 중엔 탭 무시 (보드 탭으로 배치)
-            if (initialBoardState[id]) return; // 이미 있던 타일은 못 회수
+            if (placeModeActive) return;
+            if (initialBoardState[id]) return;
             returnTileToRack(id);
         });
 
@@ -1219,7 +1329,6 @@ function updatePlayerUI() {
         listEl.appendChild(span);
     });
 
-    // 관전자
     Object.entries(window.latestPlayersData).forEach(([name, data]) => {
         if (!data.joined || data.role !== 'spectator') return;
         const span = document.createElement('span');
@@ -1227,12 +1336,6 @@ function updatePlayerUI() {
         span.style.opacity = '0.6';
         span.innerHTML = `👀${name}`;
         listEl.appendChild(span);
-    });
-
-    const isHost = myName === currentHost;
-    ['btn-force-next-m','btn-force-lobby-m'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = isHost ? 'block' : 'none';
     });
 }
 
@@ -1251,6 +1354,51 @@ function updateRegScoreUI() {
     badge.style.display = 'block';
     badge.style.borderColor = pts >= 30 ? '#2ecc71' : '#f1c40f';
     badge.style.color       = pts >= 30 ? '#2ecc71' : '#f1c40f';
+}
+
+/* ================================================
+   관전자 손패 뷰어 (★ 신규)
+================================================ */
+function toggleSpecHandModal() {
+    const modal = document.getElementById('spec-hand-modal');
+    const isOpen = modal.classList.contains('open');
+    if (isOpen) { modal.classList.remove('open'); return; }
+
+    // 모든 플레이어 손패 로드
+    db.ref('hands').once('value', snap => {
+        const allHands = snap.val() || {};
+        const content = document.getElementById('spec-hand-content');
+        content.innerHTML = '';
+
+        playerList.forEach(pName => {
+            const hand = Object.values(allHands[pName] || {});
+            const row = document.createElement('div');
+            row.className = 'spec-player-row';
+            const label = document.createElement('div');
+            label.className = 'spec-player-label';
+            label.innerText = `${pName === currentTurn ? '▶ ' : ''}${pName} (${hand.length}개)`;
+            const wrap = document.createElement('div');
+            wrap.className = 'spec-tiles-wrap';
+
+            const coMap = { red:1, blue:2, yellow:3, black:4, joker:5 };
+            hand.sort((a,b) => {
+                const va = a.num === 'J' ? 99 : Number(a.num);
+                const vb = b.num === 'J' ? 99 : Number(b.num);
+                return (coMap[a.color] - coMap[b.color]) || (va - vb);
+            }).forEach(t => {
+                const tile = document.createElement('div');
+                tile.className = `spec-tile ${t.color}`;
+                tile.innerText = t.num;
+                wrap.appendChild(tile);
+            });
+
+            row.appendChild(label);
+            row.appendChild(wrap);
+            content.appendChild(row);
+        });
+
+        modal.classList.add('open');
+    });
 }
 
 /* ================================================
@@ -1649,7 +1797,10 @@ window.onload = function() {
             else document.getElementById('entry-overlay').style.display = 'flex';
         }, 200);
 
-        // 게임 상태
+        // 초기 보드 뷰 핏
+        boardScale = 0.7; boardTX = 40; boardTY = 40;
+        applyBoardTransform();
+
         db.ref('settings/status').on('value', snap => {
             gameStatus = snap.val() || 'waiting';
             const overlay = document.getElementById('overlay');
@@ -1705,13 +1856,23 @@ window.onload = function() {
         db.ref('currentTurn').on('value', snap => {
             currentTurn = snap.val();
             const isMy = currentTurn === myName && myRole === 'player';
+
             ['btn-end-m','btn-draw-m','btn-back-m','btn-hint-m'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.disabled = !isMy;
             });
-            document.getElementById('board-wrap').style.pointerEvents = isMy ? 'auto' : 'none';
-            document.getElementById('board-wrap').style.opacity = isMy ? '1' : '0.75';
-            if (isMy) { playSFX('turnAlarm'); initialBoardState = JSON.parse(JSON.stringify(boardTiles)); }
+
+            // ★ 핵심 수정: pointer-events는 항상 auto (관전자/비턴도 패닝 가능)
+            // 딤 처리만 토글
+            const bw = document.getElementById('board-wrap');
+            bw.classList.toggle('not-my-turn', !isMy);
+
+            if (isMy) {
+                playSFX('turnAlarm');
+                initialBoardState = JSON.parse(JSON.stringify(boardTiles));
+                // 내 턴이 되면 보드 자동 핏
+                fitBoardToView();
+            }
             updatePlayerUI();
             updateRegScoreUI();
             cancelPlaceMode();
@@ -1731,10 +1892,17 @@ window.onload = function() {
             }, 1000);
         });
 
+        // ★ 핵심 수정: 보드 업데이트 시 타일이 있으면 자동으로 뷰 조정
+        let boardFirstLoad = true;
         db.ref('board').on('value', snap => {
             boardTiles = snap.val() || {};
             updateRegScoreUI();
             renderBoard();
+            // 첫 로드 또는 타일이 새로 생겼을 때 자동 핏
+            if (boardFirstLoad && Object.keys(boardTiles).length > 0) {
+                boardFirstLoad = false;
+                setTimeout(fitBoardToView, 100);
+            }
         });
 
         db.ref('pool').on('value', snap => {
