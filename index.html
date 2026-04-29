@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>루미큐브 모바일 0.1</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>루미큐브 모바일 Ver.02</title>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -28,10 +28,15 @@
     --purple: #9d50bb;
     --modal-bg: #ffffff;
     --border: rgba(0,0,0,0.08);
-    /* 가로 모드에서 줄어든 값은 JS로 동적 조정 */
-    --rack-height: 130px;
-    --topbar-height: 52px;
-    --actionbar-height: 52px;
+
+    /* ★ 핵심: safe-area + 고정 크기 */
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+
+    /* 세로 모드 기본값 */
+    --topbar-height: 44px;
+    --actionbar-height: 44px;
+    --rack-height: 100px;
 }
 
 body[data-theme='dark'] {
@@ -99,50 +104,45 @@ html, body {
     touch-action: none;
 }
 
+/* ★ 핵심: 100dvh + safe-area로 실제 가시 영역만 사용 */
 #app {
     display: flex;
     flex-direction: column;
     height: 100dvh;
+    /* 노치/홈바 safe-area 처리 */
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bottom);
     width: 100%;
     overflow: hidden;
 }
 
 /* ===========================
-   상단 바
+   상단 바 — 세로 모드
 =========================== */
 #top-bar {
     height: var(--topbar-height);
+    flex-shrink: 0;
     background: var(--panel);
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    padding: 0 10px;
-    gap: 6px;
+    padding: 0 8px;
+    gap: 5px;
     overflow-x: auto;
     overflow-y: hidden;
-    flex-shrink: 0;
     -webkit-overflow-scrolling: touch;
 }
 #top-bar::-webkit-scrollbar { display: none; }
 
-/* 가로 모드 상단 바 슬림 */
-@media (orientation: landscape) {
-    #top-bar { height: 38px; padding: 0 8px; gap: 4px; }
-    #action-bar { height: 40px; padding: 0 8px; gap: 6px; }
-    #rack-wrap { height: 90px; }
-    .rack-tile { top: 14px !important; }
-    .act-btn { height: 30px; font-size: 0.72rem; }
-}
-
 .p-badge {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
     background: rgba(128,128,128,0.1);
     border: 1.5px solid var(--border);
     border-radius: 20px;
-    padding: 4px 10px;
-    font-size: 0.72rem;
+    padding: 3px 8px;
+    font-size: 0.68rem;
     font-weight: 800;
     white-space: nowrap;
     flex-shrink: 0;
@@ -152,14 +152,14 @@ html, body {
     background: rgba(52,152,219,0.2);
     border-color: var(--blue);
     color: var(--blue);
-    box-shadow: 0 0 10px rgba(52,152,219,0.3);
+    box-shadow: 0 0 8px rgba(52,152,219,0.3);
 }
 .p-badge .cnt {
     background: var(--text);
     color: var(--bg);
-    padding: 1px 5px;
-    border-radius: 8px;
-    font-size: 0.7rem;
+    padding: 1px 4px;
+    border-radius: 7px;
+    font-size: 0.65rem;
     font-weight: 900;
 }
 
@@ -167,34 +167,34 @@ html, body {
     margin-left: auto;
     background: var(--purple);
     color: white;
-    border-radius: 12px;
-    padding: 4px 9px;
-    font-size: 0.68rem;
+    border-radius: 10px;
+    padding: 3px 7px;
+    font-size: 0.63rem;
     font-weight: 800;
     white-space: nowrap;
     flex-shrink: 0;
 }
 
 #timer-m {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 900;
     color: var(--red);
-    width: 36px;
+    width: 32px;
     text-align: center;
     flex-shrink: 0;
 }
 
 /* ===========================
-   보드 영역
+   보드 영역 — flex:1로 남은 공간 모두 차지
 =========================== */
 #board-wrap {
     flex: 1;
+    min-height: 0;          /* ★ flex 자식이 줄어들 수 있도록 반드시 필요 */
     overflow: hidden;
     position: relative;
     background: var(--board-bg);
     background-image: radial-gradient(circle, rgba(128,128,128,0.12) 1px, transparent 1px);
     background-size: 44px 44px;
-    /* ★ 관전자/비턴 중에도 터치 이벤트는 허용 (패닝/줌 위해) */
     touch-action: none;
 }
 body[data-theme='dark'] #board-wrap {
@@ -222,10 +222,7 @@ body[data-theme='cyber'] #board-wrap {
     transform-origin: 0 0;
 }
 
-/* 비턴 / 관전자: 보드 딤 처리만, 포인터이벤트는 유지 */
-#board-wrap.not-my-turn {
-    opacity: 0.80;
-}
+#board-wrap.not-my-turn { opacity: 0.80; }
 
 #drop-indicator {
     position: absolute;
@@ -243,24 +240,24 @@ body[data-theme='cyber'] #board-wrap {
 =========================== */
 #action-bar {
     height: var(--actionbar-height);
+    flex-shrink: 0;
     background: var(--panel);
     border-top: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 10px;
-    gap: 8px;
-    flex-shrink: 0;
+    padding: 0 8px;
+    gap: 6px;
 }
 
 .act-btn {
     flex: 1;
-    height: 36px;
+    height: 32px;
     border: none;
-    border-radius: 18px;
+    border-radius: 16px;
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     cursor: pointer;
     transition: all 0.15s;
     color: white;
@@ -272,30 +269,30 @@ body[data-theme='cyber'] #board-wrap {
 #btn-draw-m  { background: var(--blue); }
 #btn-back-m  { background: rgba(128,128,128,0.25); color: var(--text); }
 #btn-hint-m  { background: var(--gold); color: #000; }
-#btn-chat-m  { background: var(--purple); min-width: 36px; max-width: 36px; flex: none; font-size: 1rem; }
+#btn-chat-m  { background: var(--purple); min-width: 34px; max-width: 34px; flex: none; font-size: 0.95rem; }
 
-/* 관전자 전용 버튼 */
 #btn-spec-hand-m {
     background: rgba(155,89,182,0.3);
     color: var(--text);
     border: 1.5px solid var(--purple);
-    min-width: 56px;
-    max-width: 56px;
+    min-width: 50px;
+    max-width: 50px;
     flex: none;
-    font-size: 0.68rem;
+    font-size: 0.62rem;
 }
 
 /* ===========================
    내 패 (하단 랙)
+   ★ 타일 높이(60px) + 위 여백(24px) + 아래 여백(16px) = 100px
 =========================== */
 #rack-wrap {
     height: var(--rack-height);
+    flex-shrink: 0;
     background: var(--rack-bg);
     border-top: 2px solid var(--border);
     position: relative;
     overflow-x: auto;
     overflow-y: hidden;
-    flex-shrink: 0;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x;
 }
@@ -312,16 +309,16 @@ body[data-theme='cyber'] #board-wrap {
     position: absolute;
     top: 4px; right: 6px;
     display: flex;
-    gap: 4px;
+    gap: 3px;
     z-index: 10;
 }
 .sort-btn {
-    padding: 3px 8px;
-    border-radius: 10px;
+    padding: 2px 6px;
+    border-radius: 8px;
     border: 1px solid var(--border);
     background: rgba(255,255,255,0.15);
     color: var(--text);
-    font-size: 0.62rem;
+    font-size: 0.58rem;
     font-weight: 800;
     font-family: 'Nunito', sans-serif;
     cursor: pointer;
@@ -339,7 +336,7 @@ body[data-theme='cyber'] #board-wrap {
     justify-content: center;
     align-items: center;
     font-weight: 900;
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     box-shadow: 0 3px 0 var(--tile-shadow), 0 4px 10px rgba(0,0,0,0.15);
     border: 1px solid rgba(0,0,0,0.08);
     cursor: pointer;
@@ -351,7 +348,7 @@ body[data-theme='cyber'] #board-wrap {
 .tile.blue   { color: #2980b9; border-bottom: 4px solid #2980b9; }
 .tile.yellow { color: #f39c12; border-bottom: 4px solid #f39c12; }
 .tile.black  { color: #2d3436; border-bottom: 4px solid #333; }
-.tile.joker  { color: #8e44ad; font-size: 1.5rem; }
+.tile.joker  { color: #8e44ad; font-size: 1.4rem; }
 
 .tile.selected-tile {
     box-shadow: 0 0 0 3px var(--blue), 0 6px 18px rgba(52,152,219,0.4) !important;
@@ -368,14 +365,54 @@ body[data-theme='cyber'] #board-wrap {
     50%      { box-shadow: 0 0 18px 5px var(--gold); }
 }
 
+/* ★ 랙 타일: rack-height=100, 타일높이=60 → 상단 여백 = (100-60)/2 = 20px */
 .rack-tile {
     position: absolute;
-    top: 35px;
+    top: 20px;
 }
+
+/* ===========================
+   가로 모드 오버라이드
+   ★ 핵심: 모든 높이를 대폭 줄여 보드 공간 확보
+=========================== */
 @media (orientation: landscape) {
-    .tile { width: 36px; height: 52px; font-size: 1.05rem; }
-    .tile.joker { font-size: 1.25rem; }
-    .rack-tile { top: 14px; }
+    :root {
+        --topbar-height: 36px;
+        --actionbar-height: 36px;
+        --rack-height: 76px;
+    }
+
+    .tile {
+        width: 34px;
+        height: 50px;
+        font-size: 0.95rem;
+    }
+    .tile.joker { font-size: 1.15rem; }
+
+    .rack-tile {
+        top: 13px;  /* (76-50)/2 */
+    }
+
+    .act-btn {
+        height: 26px;
+        font-size: 0.65rem;
+        border-radius: 13px;
+    }
+
+    #btn-chat-m  { min-width: 28px; max-width: 28px; font-size: 0.8rem; }
+    #btn-spec-hand-m { min-width: 44px; max-width: 44px; font-size: 0.58rem; }
+
+    #top-bar { padding: 0 6px; gap: 4px; }
+    #action-bar { padding: 0 6px; gap: 5px; }
+
+    /* 가로 모드에서 채팅 패널을 오른쪽 절반으로 */
+    #chat-panel {
+        height: 80vh;
+        width: 50vw;
+        left: auto;
+        right: 0;
+        border-radius: 20px 20px 0 0;
+    }
 }
 
 /* ===========================
@@ -383,14 +420,14 @@ body[data-theme='cyber'] #board-wrap {
 =========================== */
 #place-mode-hint {
     position: fixed;
-    top: calc(var(--topbar-height) + 8px);
+    top: calc(var(--safe-top) + var(--topbar-height) + 6px);
     left: 50%;
     transform: translateX(-50%);
     background: rgba(52,152,219,0.9);
     color: white;
-    padding: 7px 18px;
-    border-radius: 20px;
-    font-size: 0.78rem;
+    padding: 6px 16px;
+    border-radius: 18px;
+    font-size: 0.75rem;
     font-weight: 800;
     pointer-events: none;
     display: none;
@@ -416,7 +453,7 @@ body[data-theme='cyber'] #board-wrap {
     background: var(--modal-bg);
     color: var(--text);
     border-radius: 20px;
-    padding: 28px 24px;
+    padding: 24px 20px;
     width: 88vw;
     max-width: 400px;
     max-height: 85vh;
@@ -424,10 +461,10 @@ body[data-theme='cyber'] #board-wrap {
     border: 1px solid var(--border);
     box-shadow: 0 10px 40px rgba(0,0,0,0.4);
 }
-.modal-card h2 { margin: 0 0 16px; font-size: 1.2rem; }
+.modal-card h2 { margin: 0 0 14px; font-size: 1.15rem; }
 .modal-card input[type=text] {
     width: 100%;
-    padding: 12px 14px;
+    padding: 11px 13px;
     border-radius: 12px;
     border: 1.5px solid var(--border);
     background: var(--bg);
@@ -436,18 +473,18 @@ body[data-theme='cyber'] #board-wrap {
     font-family: 'Nunito', sans-serif;
     font-weight: 700;
     outline: none;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 .modal-btn {
     width: 100%;
-    padding: 13px;
+    padding: 12px;
     border-radius: 14px;
     border: none;
     font-family: 'Nunito', sans-serif;
     font-weight: 900;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     cursor: pointer;
-    margin-bottom: 8px;
+    margin-bottom: 7px;
     transition: all 0.15s;
 }
 .modal-btn:active { transform: scale(0.97); }
@@ -464,17 +501,17 @@ body[data-theme='cyber'] #board-wrap {
     align-items: center;
     background: var(--blue);
     color: white;
-    padding: 6px 13px;
-    border-radius: 16px;
+    padding: 5px 11px;
+    border-radius: 14px;
     margin: 3px;
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 800;
 }
 .player-tag.spec { background: rgba(128,128,128,0.2); color: var(--text); border: 1px dashed rgba(128,128,128,0.4); }
 
-.rank-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
-.rank-table th { color: var(--gold); border-bottom: 1px solid var(--border); padding: 6px; text-align: left; }
-.rank-table td { padding: 6px; border-bottom: 1px solid var(--border); }
+.rank-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin-top: 10px; }
+.rank-table th { color: var(--gold); border-bottom: 1px solid var(--border); padding: 5px; text-align: left; }
+.rank-table td { padding: 5px; border-bottom: 1px solid var(--border); }
 
 /* ===========================
    채팅 패널
@@ -495,35 +532,31 @@ body[data-theme='cyber'] #board-wrap {
 }
 #chat-panel.open { transform: translateY(0); }
 
-@media (orientation: landscape) {
-    #chat-panel { height: 80vh; width: 50vw; left: auto; right: 0; border-radius: 20px 20px 0 0; }
-}
-
 #chat-panel-header {
-    padding: 12px 16px 8px;
+    padding: 10px 14px 7px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
-#chat-panel-header span { font-weight: 900; font-size: 0.9rem; }
-#chat-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text); }
+#chat-panel-header span { font-weight: 900; font-size: 0.87rem; }
+#chat-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text); }
 
 #chat-log-m {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 14px;
-    font-size: 0.78rem;
+    padding: 8px 12px;
+    font-size: 0.76rem;
     line-height: 1.5;
 }
 #chat-log-m div { margin-bottom: 3px; word-break: break-all; }
 
 #game-log-m {
-    max-height: 80px;
+    max-height: 70px;
     overflow-y: auto;
-    padding: 6px 14px;
-    font-size: 0.72rem;
+    padding: 5px 12px;
+    font-size: 0.7rem;
     opacity: 0.7;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
@@ -531,30 +564,31 @@ body[data-theme='cyber'] #board-wrap {
 
 #chat-input-wrap {
     display: flex;
-    padding: 8px 10px;
-    gap: 6px;
+    padding: 7px 9px;
+    gap: 5px;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+    padding-bottom: calc(7px + var(--safe-bottom));
 }
 #chat-input-m {
     flex: 1;
-    padding: 10px 12px;
-    border-radius: 20px;
+    padding: 9px 11px;
+    border-radius: 18px;
     border: 1.5px solid var(--border);
     background: var(--bg);
     color: var(--text);
     font-family: 'Nunito', sans-serif;
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     outline: none;
 }
 #chat-send-btn {
-    padding: 10px 16px;
-    border-radius: 20px;
+    padding: 9px 14px;
+    border-radius: 18px;
     border: none;
     background: var(--blue);
     color: white;
     font-weight: 900;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     cursor: pointer;
 }
 
@@ -564,18 +598,18 @@ body[data-theme='cyber'] #board-wrap {
 #emote-picker-m {
     display: none;
     flex-wrap: wrap;
-    gap: 5px;
-    padding: 8px 10px;
+    gap: 4px;
+    padding: 7px 9px;
     background: var(--bg);
     border-top: 1px solid var(--border);
 }
 .emote-btn-m {
-    padding: 5px 10px;
-    border-radius: 12px;
+    padding: 4px 9px;
+    border-radius: 11px;
     border: 1px solid var(--border);
     background: rgba(255,255,255,0.06);
     color: var(--text);
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
     cursor: pointer;
 }
@@ -592,7 +626,7 @@ body[data-theme='cyber'] #board-wrap {
     color: black;
     padding: 3px 8px;
     border-radius: 10px;
-    font-size: 0.75rem;
+    font-size: 0.73rem;
     font-weight: 700;
     white-space: nowrap;
     pointer-events: none;
@@ -627,11 +661,11 @@ body[data-theme='cyber'] #board-wrap {
     margin-top: 10px;
 }
 .theme-btn-m {
-    width: 34px; height: 34px;
+    width: 32px; height: 32px;
     border-radius: 50%;
     border: 2px solid var(--border);
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     display: flex; align-items: center; justify-content: center;
     background: white;
 }
@@ -642,14 +676,14 @@ body[data-theme='cyber'] #board-wrap {
 =========================== */
 #reg-score-m {
     position: fixed;
-    top: calc(var(--topbar-height) + 6px);
-    right: 10px;
+    top: calc(var(--safe-top) + var(--topbar-height) + 5px);
+    right: 8px;
     background: rgba(241,196,15,0.15);
     border: 1px solid var(--gold);
     color: var(--gold);
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 0.7rem;
+    padding: 3px 9px;
+    border-radius: 11px;
+    font-size: 0.67rem;
     font-weight: 900;
     z-index: 9000;
     display: none;
@@ -660,16 +694,16 @@ body[data-theme='cyber'] #board-wrap {
    모드 버튼
 =========================== */
 .mode-btn {
-    padding: 8px 16px;
+    padding: 7px 14px;
     border-radius: 10px;
     border: 1.5px solid var(--border);
     background: rgba(128,128,128,0.1);
     color: var(--text);
     font-family: 'Nunito', sans-serif;
     font-weight: 800;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     cursor: pointer;
-    margin: 4px;
+    margin: 3px;
 }
 .mode-btn.selected {
     background: var(--blue);
@@ -685,23 +719,23 @@ body[data-theme='cyber'] #board-wrap {
     border-top: 2px solid var(--border);
     border-radius: 20px 20px 0 0;
     z-index: 45000;
-    padding: 14px 14px 20px;
+    padding: 12px 12px calc(16px + var(--safe-bottom));
     transform: translateY(100%);
     transition: transform 0.3s ease;
     max-height: 60vh;
     overflow-y: auto;
 }
 #spec-hand-modal.open { transform: translateY(0); }
-#spec-hand-modal h3 { margin: 0 0 10px; font-size: 0.95rem; display: flex; justify-content: space-between; align-items: center; }
-.spec-player-row { margin-bottom: 14px; }
-.spec-player-label { font-size: 0.75rem; font-weight: 800; color: var(--blue); margin-bottom: 6px; }
+#spec-hand-modal h3 { margin: 0 0 9px; font-size: 0.92rem; display: flex; justify-content: space-between; align-items: center; }
+.spec-player-row { margin-bottom: 12px; }
+.spec-player-label { font-size: 0.73rem; font-weight: 800; color: var(--blue); margin-bottom: 5px; }
 .spec-tiles-wrap { display: flex; flex-wrap: wrap; gap: 4px; }
 .spec-tile {
-    width: 36px; height: 50px;
+    width: 34px; height: 48px;
     background: var(--tile-bg);
     border-radius: 6px;
     display: flex; justify-content: center; align-items: center;
-    font-weight: 900; font-size: 1rem;
+    font-weight: 900; font-size: 0.95rem;
     box-shadow: 0 2px 0 var(--tile-shadow);
     border: 1px solid rgba(0,0,0,0.08);
 }
@@ -728,13 +762,13 @@ body[data-theme='cyber'] #board-wrap {
 
 #board-overlay-msg {
     position: absolute;
-    bottom: 12px; left: 50%;
+    bottom: 10px; left: 50%;
     transform: translateX(-50%);
     background: rgba(0,0,0,0.5);
     color: white;
-    padding: 5px 14px;
-    border-radius: 16px;
-    font-size: 0.7rem;
+    padding: 4px 12px;
+    border-radius: 14px;
+    font-size: 0.67rem;
     pointer-events: none;
     white-space: nowrap;
     opacity: 0;
@@ -742,7 +776,7 @@ body[data-theme='cyber'] #board-wrap {
     z-index: 999;
 }
 
-/* 사이버 네온 */
+/* 테마별 타일 */
 body[data-theme='cyber'] .tile {
     background: rgba(20,20,30,0.95) !important;
     border: 1px solid #bc13fe !important;
@@ -772,7 +806,7 @@ body[data-theme='vintage'] .tile {
 <div id="app">
     <!-- 상단 바 -->
     <div id="top-bar">
-        <div id="player-list-m" style="display:flex; gap:6px; align-items:center;"></div>
+        <div id="player-list-m" style="display:flex; gap:5px; align-items:center;"></div>
         <span id="pool-info">POOL: 0</span>
         <span id="timer-m"></span>
     </div>
@@ -796,7 +830,6 @@ body[data-theme='vintage'] .tile {
         <button class="act-btn" id="btn-draw-m" onclick="drawTile()">뽑기</button>
         <button class="act-btn" id="btn-back-m" onclick="rollbackTurn()">무르기</button>
         <button class="act-btn" id="btn-hint-m" onclick="showHint()">힌트</button>
-        <!-- 관전자 전용: 패 보기 버튼 -->
         <button class="act-btn" id="btn-spec-hand-m" onclick="toggleSpecHandModal()" style="display:none;">패보기</button>
         <button class="act-btn" id="btn-chat-m" onclick="toggleChatPanel()">💬</button>
     </div>
@@ -823,7 +856,7 @@ body[data-theme='vintage'] .tile {
     <div id="game-log-m"></div>
     <div id="emote-picker-m"></div>
     <div id="chat-input-wrap">
-        <button onclick="toggleEmotePicker()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;padding:0 4px;">😀</button>
+        <button onclick="toggleEmotePicker()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;padding:0 4px;">😀</button>
         <input type="text" id="chat-input-m" placeholder="메시지..." enterkeyhint="send"
                onkeydown="if(event.key==='Enter'){sendChat(); event.preventDefault();}">
         <button id="chat-send-btn" onclick="sendChat()">전송</button>
@@ -839,7 +872,7 @@ body[data-theme='vintage'] .tile {
     <div id="spec-hand-content"></div>
 </div>
 
-<!-- 메인 오버레이 (로비 / 결과) -->
+<!-- 메인 오버레이 -->
 <div id="overlay" class="overlay">
     <div class="modal-card" id="modal-body"><h2>서버 연결 중...</h2></div>
 </div>
@@ -937,7 +970,6 @@ function handleEntry(role, isAuto = false) {
     document.getElementById('entry-overlay').style.display = 'none';
     playSFX('success');
 
-    // 관전자 UI 설정
     if (myRole === 'spectator') {
         document.getElementById('rack-wrap').style.display = 'none';
         document.getElementById('btn-spec-hand-m').style.display = 'flex';
@@ -969,13 +1001,11 @@ function addGameLog(msg) {
 }
 
 /* ================================================
-   보드 초기 뷰 자동 핏 (★ 핵심 수정)
+   보드 초기 뷰 자동 핏
 ================================================ */
 function fitBoardToView() {
     if (Object.keys(boardTiles).length === 0) {
-        // 타일 없으면 중앙 기준 소폭 줌아웃
-        boardScale = 0.7;
-        boardTX = 40; boardTY = 40;
+        boardScale = 0.7; boardTX = 40; boardTY = 40;
         applyBoardTransform();
         return;
     }
@@ -1026,7 +1056,6 @@ boardWrap.addEventListener('touchstart', (e) => {
         );
         pinchScale0 = boardScale;
     } else if (e.touches.length === 1) {
-        // 관전자는 항상 패닝 가능, 플레이어는 타일 선택 안 했을 때만
         if (!selectedTileId) {
             isPanning = true;
             panStartX = e.touches[0].clientX;
@@ -1231,7 +1260,7 @@ function renderRack() {
     }
 
     const isLandscape = window.innerWidth > window.innerHeight;
-    const TILE_W = isLandscape ? 40 : 46;
+    const TILE_W = isLandscape ? 38 : 46;
     const totalW = sorted.length * TILE_W + 100;
     inner.style.width = Math.max(totalW, window.innerWidth) + 'px';
 
@@ -1290,7 +1319,6 @@ function renderBoard() {
         div.style.left = data.x + 'px';
         div.style.top  = data.y + 'px';
 
-        // 탭으로 회수 (내 턴 플레이어만, 내가 놓은 타일만)
         div.addEventListener('click', (e) => {
             e.stopPropagation();
             if (myRole !== 'player' || currentTurn !== myName) return;
@@ -1299,7 +1327,6 @@ function renderBoard() {
             returnTileToRack(id);
         });
 
-        // 터치 드래그
         div.addEventListener('touchstart', (e) => {
             if (myRole !== 'player' || currentTurn !== myName) return;
             if (placeModeActive) return;
@@ -1357,14 +1384,13 @@ function updateRegScoreUI() {
 }
 
 /* ================================================
-   관전자 손패 뷰어 (★ 신규)
+   관전자 손패 뷰어
 ================================================ */
 function toggleSpecHandModal() {
     const modal = document.getElementById('spec-hand-modal');
     const isOpen = modal.classList.contains('open');
     if (isOpen) { modal.classList.remove('open'); return; }
 
-    // 모든 플레이어 손패 로드
     db.ref('hands').once('value', snap => {
         const allHands = snap.val() || {};
         const content = document.getElementById('spec-hand-content');
@@ -1591,16 +1617,16 @@ async function renderLobbyUI() {
     }).join('');
 
     const rankHtml = await getRankHtml();
-    const resetBtn = isHost ? `<button class="modal-btn gray" onclick="resetRank()" style="margin-top:6px;font-size:0.8rem;">전적 초기화</button>` : '';
+    const resetBtn = isHost ? `<button class="modal-btn gray" onclick="resetRank()" style="margin-top:6px;font-size:0.78rem;">전적 초기화</button>` : '';
 
     mb.innerHTML = `
         <h2>🎮 루미큐브 대기실</h2>
-        <div style="margin-bottom:14px; background:rgba(128,128,128,0.08); padding:10px; border-radius:12px;">${tags}</div>
-        <div style="margin-bottom:12px; text-align:center;">
+        <div style="margin-bottom:12px; background:rgba(128,128,128,0.08); padding:9px; border-radius:12px;">${tags}</div>
+        <div style="margin-bottom:10px; text-align:center;">
             <button class="mode-btn${gameMode==='normal'?' selected':''}" onclick="db.ref('settings/gameMode').set('normal')">보통 (4인)</button>
             <button class="mode-btn${gameMode==='expert'?' selected':''}" onclick="db.ref('settings/gameMode').set('expert')">전문가 (6인)</button>
         </div>
-        <div style="margin-bottom:14px;">
+        <div style="margin-bottom:12px;">
             <b style="color:var(--gold);">🏆 명예의 전당</b>
             <div id="rank-box-m">${rankHtml}</div>
             ${resetBtn}
@@ -1608,12 +1634,12 @@ async function renderLobbyUI() {
         ${isHost
             ? `<button class="modal-btn green" onclick="startGame()">게임 시작</button>
                <button class="modal-btn red-btn" id="btn-force-lobby-m" onclick="returnToLobby()" style="margin-top:6px;">리셋</button>`
-            : `<p style="color:var(--gold);text-align:center;font-size:0.85rem;">방장이 게임을 시작하기를 기다리는 중...</p>
+            : `<p style="color:var(--gold);text-align:center;font-size:0.83rem;">방장이 게임을 시작하기를 기다리는 중...</p>
                <button class="modal-btn gray" id="btn-force-lobby-m" style="display:none;" onclick="returnToLobby()">리셋</button>`
         }
-        <div id="theme-row" style="margin-top:14px;">
-            <b style="font-size:0.8rem; display:block; margin-bottom:6px;">테마</b>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        <div style="margin-top:12px;">
+            <b style="font-size:0.78rem; display:block; margin-bottom:5px;">테마</b>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;">
                 <button class="theme-btn-m classic" onclick="setTheme('classic')">⚪</button>
                 <button class="theme-btn-m dark"    onclick="setTheme('dark')">⚫</button>
                 <button class="theme-btn-m pink"    onclick="setTheme('pink')">🎀</button>
@@ -1636,11 +1662,11 @@ function renderResultUI() {
         const mb = document.getElementById('modal-body');
         let html = `<h2 style="color:var(--gold);">🏆 WINNER: ${data.winner}!</h2>`;
         Object.entries(data.scores).sort((a,b)=>a[1]-b[1]).forEach(([name,score]) => {
-            html += `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid var(--border);">
+            html += `<div style="display:flex;justify-content:space-between;padding:7px;border-bottom:1px solid var(--border);">
                         <span>${name}</span><span>${name===data.winner?'WINNER':score+'점'}</span>
                      </div>`;
         });
-        if (myName === currentHost) html += `<button class="modal-btn gray" onclick="returnToLobby()" style="margin-top:16px;">대기실로</button>`;
+        if (myName === currentHost) html += `<button class="modal-btn gray" onclick="returnToLobby()" style="margin-top:14px;">대기실로</button>`;
         mb.innerHTML = html;
     });
 }
@@ -1797,7 +1823,6 @@ window.onload = function() {
             else document.getElementById('entry-overlay').style.display = 'flex';
         }, 200);
 
-        // 초기 보드 뷰 핏
         boardScale = 0.7; boardTX = 40; boardTY = 40;
         applyBoardTransform();
 
@@ -1862,15 +1887,12 @@ window.onload = function() {
                 if (el) el.disabled = !isMy;
             });
 
-            // ★ 핵심 수정: pointer-events는 항상 auto (관전자/비턴도 패닝 가능)
-            // 딤 처리만 토글
             const bw = document.getElementById('board-wrap');
             bw.classList.toggle('not-my-turn', !isMy);
 
             if (isMy) {
                 playSFX('turnAlarm');
                 initialBoardState = JSON.parse(JSON.stringify(boardTiles));
-                // 내 턴이 되면 보드 자동 핏
                 fitBoardToView();
             }
             updatePlayerUI();
@@ -1892,13 +1914,11 @@ window.onload = function() {
             }, 1000);
         });
 
-        // ★ 핵심 수정: 보드 업데이트 시 타일이 있으면 자동으로 뷰 조정
         let boardFirstLoad = true;
         db.ref('board').on('value', snap => {
             boardTiles = snap.val() || {};
             updateRegScoreUI();
             renderBoard();
-            // 첫 로드 또는 타일이 새로 생겼을 때 자동 핏
             if (boardFirstLoad && Object.keys(boardTiles).length > 0) {
                 boardFirstLoad = false;
                 setTimeout(fitBoardToView, 100);
