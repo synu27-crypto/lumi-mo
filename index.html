@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>루미큐브 모바일 Ver.02</title>
+    <title>루미큐브 모바일 Ver.03</title>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -29,14 +29,16 @@
     --modal-bg: #ffffff;
     --border: rgba(0,0,0,0.08);
 
-    /* ★ 핵심: safe-area + 고정 크기 */
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-top: env(safe-area-inset-top, 0px);
 
-    /* 세로 모드 기본값 */
     --topbar-height: 44px;
     --actionbar-height: 44px;
-    --rack-height: 100px;
+    --rack-height: 108px;
+
+    /* ★ 타일 크기 — JS와 반드시 동기화 */
+    --tw: 44px;   /* tile width  */
+    --th: 62px;   /* tile height */
 }
 
 body[data-theme='dark'] {
@@ -104,12 +106,10 @@ html, body {
     touch-action: none;
 }
 
-/* ★ 핵심: 100dvh + safe-area로 실제 가시 영역만 사용 */
 #app {
     display: flex;
     flex-direction: column;
     height: 100dvh;
-    /* 노치/홈바 safe-area 처리 */
     padding-top: var(--safe-top);
     padding-bottom: var(--safe-bottom);
     width: 100%;
@@ -117,7 +117,7 @@ html, body {
 }
 
 /* ===========================
-   상단 바 — 세로 모드
+   상단 바
 =========================== */
 #top-bar {
     height: var(--topbar-height);
@@ -147,6 +147,7 @@ html, body {
     white-space: nowrap;
     flex-shrink: 0;
     transition: all 0.2s;
+    position: relative;
 }
 .p-badge.active {
     background: rgba(52,152,219,0.2);
@@ -185,17 +186,18 @@ html, body {
 }
 
 /* ===========================
-   보드 영역 — flex:1로 남은 공간 모두 차지
+   보드 영역
 =========================== */
 #board-wrap {
     flex: 1;
-    min-height: 0;          /* ★ flex 자식이 줄어들 수 있도록 반드시 필요 */
+    min-height: 0;
     overflow: hidden;
     position: relative;
     background: var(--board-bg);
     background-image: radial-gradient(circle, rgba(128,128,128,0.12) 1px, transparent 1px);
     background-size: 44px 44px;
     touch-action: none;
+    cursor: default;
 }
 body[data-theme='dark'] #board-wrap {
     background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
@@ -217,22 +219,29 @@ body[data-theme='cyber'] #board-wrap {
 #board-canvas {
     position: absolute;
     top: 0; left: 0;
-    width: 2400px;
-    height: 1600px;
+    /* ★ 캔버스 크기 대폭 축소 — 광활함 제거 */
+    width: 1200px;
+    height: 900px;
     transform-origin: 0 0;
 }
 
 #board-wrap.not-my-turn { opacity: 0.80; }
 
-#drop-indicator {
+/* ★ 배치 모드일 때 커서/안내선 */
+#board-wrap.place-mode { cursor: crosshair; }
+
+/* 그리드 스냅 미리보기 */
+#snap-preview {
     position: absolute;
-    width: 44px; height: 64px;
+    width: var(--tw);
+    height: var(--th);
     border: 2px dashed var(--blue);
-    border-radius: 8px;
-    background: rgba(52,152,219,0.15);
+    border-radius: 7px;
+    background: rgba(52,152,219,0.18);
     pointer-events: none;
     display: none;
-    z-index: 999;
+    z-index: 998;
+    transition: left 0.05s, top 0.05s;
 }
 
 /* ===========================
@@ -283,7 +292,7 @@ body[data-theme='cyber'] #board-wrap {
 
 /* ===========================
    내 패 (하단 랙)
-   ★ 타일 높이(60px) + 위 여백(24px) + 아래 여백(16px) = 100px
+   rack-height=108, tile-height=62 → top=(108-62)/2=23px
 =========================== */
 #rack-wrap {
     height: var(--rack-height);
@@ -294,8 +303,10 @@ body[data-theme='cyber'] #board-wrap {
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    /* ★ 배치 모드 아닐 때만 pan-x 허용 */
     touch-action: pan-x;
 }
+#rack-wrap.place-mode-rack { touch-action: none; }
 #rack-wrap::-webkit-scrollbar { display: none; }
 
 #rack-inner {
@@ -329,111 +340,104 @@ body[data-theme='cyber'] #board-wrap {
 =========================== */
 .tile {
     position: absolute;
-    width: 42px; height: 60px;
+    width: var(--tw);
+    height: var(--th);
     background: var(--tile-bg);
     border-radius: 7px;
     display: flex;
     justify-content: center;
     align-items: center;
     font-weight: 900;
-    font-size: 1.2rem;
-    box-shadow: 0 3px 0 var(--tile-shadow), 0 4px 10px rgba(0,0,0,0.15);
-    border: 1px solid rgba(0,0,0,0.08);
+    font-size: 1.15rem;
+    box-shadow: 0 3px 0 var(--tile-shadow), 0 4px 8px rgba(0,0,0,0.12);
+    border: 1px solid rgba(0,0,0,0.07);
     cursor: pointer;
     z-index: 10;
     transition: transform 0.1s, box-shadow 0.1s;
     touch-action: none;
+    -webkit-user-select: none;
 }
 .tile.red    { color: #e44d26; border-bottom: 4px solid #e44d26; }
 .tile.blue   { color: #2980b9; border-bottom: 4px solid #2980b9; }
 .tile.yellow { color: #f39c12; border-bottom: 4px solid #f39c12; }
 .tile.black  { color: #2d3436; border-bottom: 4px solid #333; }
-.tile.joker  { color: #8e44ad; font-size: 1.4rem; }
+.tile.joker  { color: #8e44ad; font-size: 1.35rem; }
 
+/* 선택된 타일 */
 .tile.selected-tile {
     box-shadow: 0 0 0 3px var(--blue), 0 6px 18px rgba(52,152,219,0.4) !important;
-    transform: scale(1.08) translateY(-4px) !important;
-    z-index: 100 !important;
+    transform: scale(1.08) translateY(-5px) !important;
+    z-index: 200 !important;
 }
+
+/* 힌트 타일 */
 .tile.hint-target {
-    animation: mob-hint 0.9s ease-in-out infinite;
-    border: 2px solid var(--gold) !important;
+    animation: mob-hint 0.85s ease-in-out infinite;
     z-index: 50 !important;
 }
 @keyframes mob-hint {
-    0%,100% { box-shadow: 0 0 5px var(--gold); }
-    50%      { box-shadow: 0 0 18px 5px var(--gold); }
+    0%,100% { box-shadow: 0 3px 0 var(--tile-shadow), 0 0 0 2px var(--gold); }
+    50%      { box-shadow: 0 3px 0 var(--tile-shadow), 0 0 16px 4px var(--gold), 0 0 0 2px var(--gold); }
 }
 
-/* ★ 랙 타일: rack-height=100, 타일높이=60 → 상단 여백 = (100-60)/2 = 20px */
-.rack-tile {
-    position: absolute;
-    top: 20px;
+/* 랙 타일 top 위치 */
+.rack-tile { top: 23px; }
+
+/* 보드에서 원래 타일 (움직일 수 없는) */
+.tile.locked {
+    opacity: 0.88;
+    cursor: default;
+}
+/* 이번 턴에 새로 올린 타일 강조 */
+.tile.new-tile {
+    box-shadow: 0 3px 0 var(--tile-shadow), 0 0 0 1.5px rgba(52,152,219,0.5), 0 4px 8px rgba(0,0,0,0.12);
 }
 
 /* ===========================
-   가로 모드 오버라이드
-   ★ 핵심: 모든 높이를 대폭 줄여 보드 공간 확보
+   가로 모드
 =========================== */
 @media (orientation: landscape) {
     :root {
         --topbar-height: 36px;
         --actionbar-height: 36px;
-        --rack-height: 76px;
+        --rack-height: 80px;
+        --tw: 36px;
+        --th: 52px;
     }
+    .rack-tile { top: 14px; } /* (80-52)/2 */
 
-    .tile {
-        width: 34px;
-        height: 50px;
-        font-size: 0.95rem;
-    }
-    .tile.joker { font-size: 1.15rem; }
+    .tile { font-size: 0.95rem; }
+    .tile.joker { font-size: 1.1rem; }
 
-    .rack-tile {
-        top: 13px;  /* (76-50)/2 */
-    }
-
-    .act-btn {
-        height: 26px;
-        font-size: 0.65rem;
-        border-radius: 13px;
-    }
-
+    .act-btn { height: 26px; font-size: 0.65rem; border-radius: 13px; }
     #btn-chat-m  { min-width: 28px; max-width: 28px; font-size: 0.8rem; }
     #btn-spec-hand-m { min-width: 44px; max-width: 44px; font-size: 0.58rem; }
-
     #top-bar { padding: 0 6px; gap: 4px; }
     #action-bar { padding: 0 6px; gap: 5px; }
 
-    /* 가로 모드에서 채팅 패널을 오른쪽 절반으로 */
-    #chat-panel {
-        height: 80vh;
-        width: 50vw;
-        left: auto;
-        right: 0;
-        border-radius: 20px 20px 0 0;
-    }
+    #chat-panel { height: 80vh; width: 50vw; left: auto; right: 0; border-radius: 20px 20px 0 0; }
 }
 
 /* ===========================
-   배치 모드 오버레이
+   배치 모드 배너
 =========================== */
 #place-mode-hint {
     position: fixed;
     top: calc(var(--safe-top) + var(--topbar-height) + 6px);
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(52,152,219,0.9);
+    background: rgba(52,152,219,0.92);
     color: white;
-    padding: 6px 16px;
-    border-radius: 18px;
-    font-size: 0.75rem;
+    padding: 7px 18px;
+    border-radius: 20px;
+    font-size: 0.76rem;
     font-weight: 800;
     pointer-events: none;
     display: none;
     z-index: 9999;
     backdrop-filter: blur(6px);
     white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(52,152,219,0.35);
 }
 
 /* ===========================
@@ -592,9 +596,7 @@ body[data-theme='cyber'] #board-wrap {
     cursor: pointer;
 }
 
-/* ===========================
-   이모트 피커
-=========================== */
+/* 이모트 피커 */
 #emote-picker-m {
     display: none;
     flex-wrap: wrap;
@@ -614,9 +616,7 @@ body[data-theme='cyber'] #board-wrap {
     cursor: pointer;
 }
 
-/* ===========================
-   이모트 말풍선
-=========================== */
+/* 이모트 말풍선 */
 .emoji-bubble {
     position: absolute;
     top: calc(100% + 4px);
@@ -651,29 +651,19 @@ body[data-theme='cyber'] #board-wrap {
     100% { opacity: 0; transform: translate(-50%, 12px); }
 }
 
-/* ===========================
-   테마 선택기
-=========================== */
+/* 테마 선택기 */
 #theme-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-top: 10px;
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;
 }
 .theme-btn-m {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    cursor: pointer;
-    font-size: 0.85rem;
-    display: flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid var(--border); cursor: pointer;
+    font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
     background: white;
 }
 .theme-btn-m.active { border-color: var(--blue); box-shadow: 0 0 6px var(--blue); }
 
-/* ===========================
-   등록 점수 뱃지
-=========================== */
+/* 등록 점수 뱃지 */
 #reg-score-m {
     position: fixed;
     top: calc(var(--safe-top) + var(--topbar-height) + 5px);
@@ -690,26 +680,15 @@ body[data-theme='cyber'] #board-wrap {
     pointer-events: none;
 }
 
-/* ===========================
-   모드 버튼
-=========================== */
+/* 모드 버튼 */
 .mode-btn {
-    padding: 7px 14px;
-    border-radius: 10px;
+    padding: 7px 14px; border-radius: 10px;
     border: 1.5px solid var(--border);
     background: rgba(128,128,128,0.1);
-    color: var(--text);
-    font-family: 'Nunito', sans-serif;
-    font-weight: 800;
-    font-size: 0.78rem;
-    cursor: pointer;
-    margin: 3px;
+    color: var(--text); font-family: 'Nunito', sans-serif;
+    font-weight: 800; font-size: 0.78rem; cursor: pointer; margin: 3px;
 }
-.mode-btn.selected {
-    background: var(--blue);
-    color: white;
-    border-color: var(--blue);
-}
+.mode-btn.selected { background: var(--blue); color: white; border-color: var(--blue); }
 
 /* 관전자 손패 뷰어 모달 */
 #spec-hand-modal {
@@ -732,8 +711,7 @@ body[data-theme='cyber'] #board-wrap {
 .spec-tiles-wrap { display: flex; flex-wrap: wrap; gap: 4px; }
 .spec-tile {
     width: 34px; height: 48px;
-    background: var(--tile-bg);
-    border-radius: 6px;
+    background: var(--tile-bg); border-radius: 6px;
     display: flex; justify-content: center; align-items: center;
     font-weight: 900; font-size: 0.95rem;
     box-shadow: 0 2px 0 var(--tile-shadow);
@@ -760,22 +738,6 @@ body[data-theme='cyber'] #board-wrap {
 }
 .screen-shaking { animation: screen-shake 0.5s ease-in-out; }
 
-#board-overlay-msg {
-    position: absolute;
-    bottom: 10px; left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.5);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 14px;
-    font-size: 0.67rem;
-    pointer-events: none;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.3s;
-    z-index: 999;
-}
-
 /* 테마별 타일 */
 body[data-theme='cyber'] .tile {
     background: rgba(20,20,30,0.95) !important;
@@ -799,6 +761,27 @@ body[data-theme='vintage'] .tile {
     background: linear-gradient(145deg,#fdf6ec,#f0e0c8) !important;
     filter: sepia(15%) !important;
 }
+
+/* ★ 취소 버튼 (배치 모드 중 보드 하단 고정) */
+#cancel-place-btn {
+    position: fixed;
+    bottom: calc(var(--rack-height) + var(--actionbar-height) + var(--safe-bottom) + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(231,76,60,0.9);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 7px 20px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 900;
+    font-size: 0.76rem;
+    display: none;
+    z-index: 9998;
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(231,76,60,0.3);
+}
     </style>
 </head>
 <body data-theme="classic">
@@ -814,12 +797,14 @@ body[data-theme='vintage'] .tile {
     <!-- 보드 -->
     <div id="board-wrap">
         <div id="board-canvas"></div>
-        <div id="drop-indicator"></div>
-        <div id="board-overlay-msg">핀치로 확대/축소 | 두 손가락으로 이동</div>
+        <div id="snap-preview"></div>
     </div>
 
-    <!-- 배치 모드 힌트 -->
-    <div id="place-mode-hint">타일을 놓을 위치를 탭하세요 (다시 탭하면 취소)</div>
+    <!-- 배치 모드 배너 -->
+    <div id="place-mode-hint">보드를 탭해서 놓기 · 다시 탭하면 취소</div>
+
+    <!-- 배치 모드 취소 버튼 -->
+    <button id="cancel-place-btn" onclick="cancelPlaceMode()">✕ 취소</button>
 
     <!-- 등록 점수 뱃지 -->
     <div id="reg-score-m"></div>
@@ -881,26 +866,33 @@ body[data-theme='vintage'] .tile {
 <div id="entry-overlay" class="overlay" style="display:none;">
     <div class="modal-card">
         <h2>🎮 루미큐브 입장</h2>
-        <input type="text" id="nick-input" placeholder="닉네임 입력..." maxlength="10"
-               enterkeyhint="go">
+        <input type="text" id="nick-input" placeholder="닉네임 입력..." maxlength="10" enterkeyhint="go">
         <button class="modal-btn green" onclick="handleEntry('player')">플레이어 입장</button>
         <button class="modal-btn gray"  onclick="handleEntry('spectator')">관전자 입장</button>
-
         <div id="theme-row">
-            <button class="theme-btn-m classic" onclick="setTheme('classic')"     title="클래식">⚪</button>
-            <button class="theme-btn-m dark"    onclick="setTheme('dark')"        title="다크">⚫</button>
-            <button class="theme-btn-m pink"    onclick="setTheme('pink')"        title="핑크">🎀</button>
-            <button class="theme-btn-m vintage" onclick="setTheme('vintage')"     title="빈티지">🪞</button>
-            <button class="theme-btn-m kitty"   onclick="setTheme('kitty')"       title="키티">❤</button>
-            <button class="theme-btn-m cinnamoroll" onclick="setTheme('cinnamoroll')" title="시나모롤">☁️</button>
-            <button class="theme-btn-m pochacco"    onclick="setTheme('pochacco')"    title="포챠코">🐾</button>
-            <button class="theme-btn-m navy"    onclick="setTheme('navy')"        title="네이비">🌊</button>
-            <button class="theme-btn-m cyber"   onclick="setTheme('cyber')"       title="사이버">⚡</button>
+            <button class="theme-btn-m classic"     onclick="setTheme('classic')">⚪</button>
+            <button class="theme-btn-m dark"         onclick="setTheme('dark')">⚫</button>
+            <button class="theme-btn-m pink"         onclick="setTheme('pink')">🎀</button>
+            <button class="theme-btn-m vintage"      onclick="setTheme('vintage')">🪞</button>
+            <button class="theme-btn-m kitty"        onclick="setTheme('kitty')">❤</button>
+            <button class="theme-btn-m cinnamoroll"  onclick="setTheme('cinnamoroll')">☁️</button>
+            <button class="theme-btn-m pochacco"     onclick="setTheme('pochacco')">🐾</button>
+            <button class="theme-btn-m navy"         onclick="setTheme('navy')">🌊</button>
+            <button class="theme-btn-m cyber"        onclick="setTheme('cyber')">⚡</button>
         </div>
     </div>
 </div>
 
 <script>
+/* ================================================
+   타일 크기 상수 (CSS --tw/--th 와 반드시 동기)
+   가로 모드 감지해서 동적 적용
+================================================ */
+function getTileSize() {
+    const landscape = window.innerWidth > window.innerHeight;
+    return landscape ? { W: 36, H: 52 } : { W: 44, H: 62 };
+}
+
 /* ================================================
    전역 상태
 ================================================ */
@@ -932,12 +924,12 @@ function playBeep(freq = 440, dur = 0.1, vol = 0.3) {
     } catch(e) {}
 }
 function playSFX(k) {
-    if (k === 'tilePick')    playBeep(600, 0.08, 0.2);
-    if (k === 'tileDrop')    playBeep(440, 0.1,  0.2);
-    if (k === 'error')       playBeep(200, 0.2,  0.3);
-    if (k === 'success')     playBeep(880, 0.15, 0.25);
-    if (k === 'turnAlarm')   { playBeep(660, 0.1, 0.3); setTimeout(() => playBeep(880, 0.1, 0.3), 150); }
-    if (k === 'dangerAlarm') { playBeep(330, 0.2, 0.3); setTimeout(() => playBeep(220, 0.2, 0.3), 250); }
+    if (k === 'tilePick')   playBeep(600, 0.08, 0.2);
+    if (k === 'tileDrop')   playBeep(440, 0.1,  0.2);
+    if (k === 'error')      playBeep(200, 0.2,  0.3);
+    if (k === 'success')    playBeep(880, 0.15, 0.25);
+    if (k === 'turnAlarm')  { playBeep(660, 0.1, 0.3); setTimeout(() => playBeep(880, 0.1, 0.3), 150); }
+    if (k === 'dangerAlarm'){ playBeep(330, 0.2, 0.3); setTimeout(() => playBeep(220, 0.2, 0.3), 250); }
 }
 
 /* ================================================
@@ -1001,33 +993,32 @@ function addGameLog(msg) {
 }
 
 /* ================================================
-   보드 초기 뷰 자동 핏
+   보드 자동 핏 — 타일이 있으면 타일 영역에 맞게, 없으면 중앙 기본값
 ================================================ */
 function fitBoardToView() {
+    const { W, H } = getTileSize();
     if (Object.keys(boardTiles).length === 0) {
-        boardScale = 0.7; boardTX = 40; boardTY = 40;
-        applyBoardTransform();
-        return;
+        boardScale = 1.0; boardTX = 30; boardTY = 30;
+        applyBoardTransform(); return;
     }
     const xs = Object.values(boardTiles).map(t => t.x);
     const ys = Object.values(boardTiles).map(t => t.y);
-    const minX = Math.min(...xs) - 20;
-    const minY = Math.min(...ys) - 20;
-    const maxX = Math.max(...xs) + 62;
-    const maxY = Math.max(...ys) + 80;
+    const minX = Math.min(...xs) - 16;
+    const minY = Math.min(...ys) - 16;
+    const maxX = Math.max(...xs) + W + 16;
+    const maxY = Math.max(...ys) + H + 16;
 
     const bw = document.getElementById('board-wrap');
-    const W = bw.clientWidth, H = bw.clientHeight;
-    const tileW = maxX - minX, tileH = maxY - minY;
+    const vw = bw.clientWidth, vh = bw.clientHeight;
+    const tw = maxX - minX, th = maxY - minY;
+    const PAD = 20;
+    const scaleX = (vw - PAD*2) / tw;
+    const scaleY = (vh - PAD*2) / th;
+    boardScale = Math.min(scaleX, scaleY, 1.8);
+    boardScale = Math.max(boardScale, 0.4);
 
-    const PAD = 24;
-    const scaleX = (W - PAD * 2) / tileW;
-    const scaleY = (H - PAD * 2) / tileH;
-    boardScale = Math.min(scaleX, scaleY, 1.5);
-    boardScale = Math.max(boardScale, 0.3);
-
-    boardTX = (W - tileW * boardScale) / 2 - minX * boardScale;
-    boardTY = (H - tileH * boardScale) / 2 - minY * boardScale;
+    boardTX = (vw - tw * boardScale) / 2 - minX * boardScale;
+    boardTY = (vh - th * boardScale) / 2 - minY * boardScale;
     applyBoardTransform();
 }
 
@@ -1036,8 +1027,9 @@ function fitBoardToView() {
 ================================================ */
 let boardScale = 1, boardTX = 0, boardTY = 0;
 let pinchDist0 = 0, pinchScale0 = 1;
-let panStartX = 0, panStartY = 0, panTX0 = 0, panTY0 = 0;
+let panStart = null;
 let isPinching = false, isPanning = false;
+let panMoved = false;
 
 function applyBoardTransform() {
     document.getElementById('board-canvas').style.transform =
@@ -1047,70 +1039,77 @@ function applyBoardTransform() {
 const boardWrap = document.getElementById('board-wrap');
 
 boardWrap.addEventListener('touchstart', (e) => {
-    if (placeModeActive) return;
     if (e.touches.length === 2) {
-        isPinching = true; isPanning = false;
+        isPinching = true; isPanning = false; panStart = null;
         pinchDist0 = Math.hypot(
             e.touches[0].clientX - e.touches[1].clientX,
             e.touches[0].clientY - e.touches[1].clientY
         );
         pinchScale0 = boardScale;
+        e.preventDefault();
     } else if (e.touches.length === 1) {
-        if (!selectedTileId) {
-            isPanning = true;
-            panStartX = e.touches[0].clientX;
-            panStartY = e.touches[0].clientY;
-            panTX0 = boardTX; panTY0 = boardTY;
-        }
+        // 배치 모드일 때는 패닝 비활성화 (탭으로 처리)
+        if (placeModeActive) return;
+        isPanning = true; panMoved = false;
+        panStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, tx: boardTX, ty: boardTY };
     }
-}, { passive: true });
+}, { passive: false });
 
 boardWrap.addEventListener('touchmove', (e) => {
-    if (placeModeActive && myRole === 'player') return;
     if (isPinching && e.touches.length === 2) {
         const dist = Math.hypot(
             e.touches[0].clientX - e.touches[1].clientX,
             e.touches[0].clientY - e.touches[1].clientY
         );
-        boardScale = Math.max(0.25, Math.min(3.5, pinchScale0 * (dist / pinchDist0)));
+        boardScale = Math.max(0.25, Math.min(4.0, pinchScale0 * (dist / pinchDist0)));
         applyBoardTransform();
-    } else if (isPanning && e.touches.length === 1) {
-        boardTX = panTX0 + (e.touches[0].clientX - panStartX);
-        boardTY = panTY0 + (e.touches[0].clientY - panStartY);
+        e.preventDefault();
+    } else if (isPanning && panStart && e.touches.length === 1) {
+        const dx = e.touches[0].clientX - panStart.x;
+        const dy = e.touches[0].clientY - panStart.y;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) panMoved = true;
+        boardTX = panStart.tx + dx;
+        boardTY = panStart.ty + dy;
         applyBoardTransform();
+        e.preventDefault();
     }
-}, { passive: true });
+}, { passive: false });
 
 boardWrap.addEventListener('touchend', (e) => {
     if (e.touches.length < 2) isPinching = false;
-    if (e.touches.length === 0) isPanning = false;
+    if (e.touches.length === 0) {
+        isPanning = false;
+        panStart = null;
+    }
 }, { passive: true });
 
 /* ================================================
-   보드 탭 → 타일 배치
+   보드 탭 → 타일 배치 (click 이벤트 단독 사용)
+   패닝이 일어났으면 무시
 ================================================ */
 boardWrap.addEventListener('click', (e) => {
     if (!placeModeActive || !selectedTileId) return;
     if (myRole !== 'player' || currentTurn !== myName) return;
+    if (panMoved) { panMoved = false; return; }
 
+    const { W, H } = getTileSize();
     const rect = boardWrap.getBoundingClientRect();
-    const rawX = (e.clientX - rect.left - boardTX) / boardScale;
-    const rawY = (e.clientY - rect.top  - boardTY) / boardScale;
+    let dropX = (e.clientX - rect.left - boardTX) / boardScale - W / 2;
+    let dropY = (e.clientY - rect.top  - boardTY) / boardScale - H / 2;
 
-    const TILE_W = 48, TILE_H = 68;
-    let dropX = rawX - 21, dropY = rawY - 30;
-    const SNAP = 40;
+    // 스냅: 인접 타일에 딱 붙이기
+    const SNAP = W * 0.7;
     let snapped = false;
     Object.values(boardTiles).forEach(t => {
         if (snapped) return;
         const dx = dropX - t.x, dy = dropY - t.y;
         if (Math.abs(dy) < SNAP) {
-            if (dx > 0 && dx < SNAP * 2)  { dropX = t.x + TILE_W; dropY = t.y; snapped = true; }
-            else if (dx < 0 && dx > -SNAP * 2) { dropX = t.x - TILE_W; dropY = t.y; snapped = true; }
+            if (dx > 0 && dx < W * 1.6)        { dropX = t.x + W + 2; dropY = t.y; snapped = true; }
+            else if (dx < 0 && dx > -W * 1.6)  { dropX = t.x - W - 2; dropY = t.y; snapped = true; }
         }
         if (!snapped && Math.abs(dx) < SNAP) {
-            if (dy > 0 && dy < SNAP * 2)  { dropY = t.y + TILE_H; dropX = t.x; snapped = true; }
-            else if (dy < 0 && dy > -SNAP * 2) { dropY = t.y - TILE_H; dropX = t.x; snapped = true; }
+            if (dy > 0 && dy < H * 1.6)        { dropY = t.y + H + 2; dropX = t.x; snapped = true; }
+            else if (dy < 0 && dy > -H * 1.6)  { dropY = t.y - H - 2; dropX = t.x; snapped = true; }
         }
     });
 
@@ -1119,103 +1118,96 @@ boardWrap.addEventListener('click', (e) => {
 
     const { id, ...clean } = tileData;
     const updates = {};
-    updates[`board/${selectedTileId}`] = { ...clean, x: dropX, y: dropY };
+    updates[`board/${selectedTileId}`] = { ...clean, x: Math.round(dropX), y: Math.round(dropY) };
     updates[`hands/${myName}/${selectedTileId}`] = null;
     db.ref('/').update(updates).then(() => playSFX('tileDrop'));
     cancelPlaceMode();
-});
+}, true);
 
+/* ================================================
+   배치 모드 취소
+================================================ */
 function cancelPlaceMode() {
     placeModeActive = false;
     selectedTileId = null;
     document.getElementById('place-mode-hint').style.display = 'none';
+    document.getElementById('cancel-place-btn').style.display = 'none';
+    document.getElementById('snap-preview').style.display = 'none';
+    boardWrap.classList.remove('place-mode');
+    document.getElementById('rack-wrap').classList.remove('place-mode-rack');
     document.querySelectorAll('.tile.selected-tile').forEach(t => t.classList.remove('selected-tile'));
 }
 
-/* ================================================
-   터치 드래그 (보드 타일)
-================================================ */
-let dragTileId = null, dragEl = null, dragOffX = 0, dragOffY = 0, dragFromBoard = false;
-
-function startTileDrag(e, tileId, fromBoard) {
-    if (myRole !== 'player' || currentTurn !== myName) return;
-    const touch = e.touches[0];
-    dragTileId = tileId;
-    dragFromBoard = fromBoard;
-    dragEl = document.getElementById(tileId) || document.getElementById('rack-' + tileId);
-    if (!dragEl) return;
-    const r = dragEl.getBoundingClientRect();
-    dragOffX = touch.clientX - r.left;
-    dragOffY = touch.clientY - r.top;
-    dragEl.style.zIndex = 9999;
-    dragEl.style.transition = 'none';
+function enterPlaceMode(tileId, el) {
+    cancelPlaceMode();
+    selectedTileId = tileId;
+    placeModeActive = true;
+    if (el) el.classList.add('selected-tile');
+    document.getElementById('place-mode-hint').style.display = 'block';
+    document.getElementById('cancel-place-btn').style.display = 'block';
+    boardWrap.classList.add('place-mode');
+    document.getElementById('rack-wrap').classList.add('place-mode-rack');
     playSFX('tilePick');
-    e.preventDefault();
+
+    // 스냅 미리보기 — 보드 위 mousemove/touchmove로 갱신
+    updateSnapPreview(null);
 }
 
-document.addEventListener('touchmove', (e) => {
-    if (!dragTileId || !dragEl) return;
-    const touch = e.touches[0];
-    dragEl.style.position = 'fixed';
-    dragEl.style.left = (touch.clientX - dragOffX) + 'px';
-    dragEl.style.top  = (touch.clientY - dragOffY)  + 'px';
-    e.preventDefault();
-}, { passive: false });
-
-document.addEventListener('touchend', (e) => {
-    if (!dragTileId || !dragEl) return;
-    const touch = e.changedTouches[0];
-    const bw = document.getElementById('board-wrap');
-    const rack = document.getElementById('rack-wrap');
-    const bRect = bw.getBoundingClientRect();
-    const rRect = rack.getBoundingClientRect();
-
-    const onBoard = touch.clientY >= bRect.top && touch.clientY <= bRect.bottom
-                 && touch.clientX >= bRect.left && touch.clientX <= bRect.right;
-    const onRack  = touch.clientY >= rRect.top  && touch.clientY <= rRect.bottom;
-
-    if (onBoard) {
-        const rawX = (touch.clientX - bRect.left - boardTX) / boardScale - dragOffX;
-        const rawY = (touch.clientY - bRect.top  - boardTY) / boardScale - dragOffY;
-        placeTileOnBoard(dragTileId, rawX, rawY, dragFromBoard);
-    } else if (onRack && dragFromBoard) {
-        returnTileToRack(dragTileId);
-    } else {
-        renderBoard();
-        renderRack();
-    }
-
-    dragTileId = null; dragEl = null;
-}, { passive: true });
-
-function placeTileOnBoard(tileId, dropX, dropY, fromBoard) {
-    const TILE_W = 48, SNAP = 40;
+/* ================================================
+   스냅 미리보기 업데이트
+================================================ */
+function updateSnapPreview(clientX, clientY) {
+    const prev = document.getElementById('snap-preview');
+    if (!placeModeActive || clientX == null) { prev.style.display = 'none'; return; }
+    const { W, H } = getTileSize();
+    const rect = boardWrap.getBoundingClientRect();
+    let dx = (clientX - rect.left - boardTX) / boardScale - W / 2;
+    let dy = (clientY - rect.top  - boardTY) / boardScale - H / 2;
     let snapped = false;
-    Object.entries(boardTiles).forEach(([tid, t]) => {
-        if (tid === tileId || snapped) return;
-        const dx = dropX - t.x, dy = dropY - t.y;
-        if (Math.abs(dy) < SNAP) {
-            if (dx > 0 && dx < SNAP * 2)  { dropX = t.x + TILE_W; dropY = t.y; snapped = true; }
-            else if (dx < 0 && dx > -SNAP * 2) { dropX = t.x - TILE_W; dropY = t.y; snapped = true; }
+    const SNAP = W * 0.7;
+    Object.values(boardTiles).forEach(t => {
+        if (snapped) return;
+        const dxd = dx - t.x, dyd = dy - t.y;
+        if (Math.abs(dyd) < SNAP) {
+            if (dxd > 0 && dxd < W * 1.6)       { dx = t.x + W + 2; dy = t.y; snapped = true; }
+            else if (dxd < 0 && dxd > -W * 1.6) { dx = t.x - W - 2; dy = t.y; snapped = true; }
         }
-        if (!snapped && Math.abs(dx) < SNAP) {
-            if (dy > 0 && dy < SNAP * 2)  { dropY = t.y + 68; dropX = t.x; snapped = true; }
-            else if (dy < 0 && dy > -SNAP * 2) { dropY = t.y - 68; dropX = t.x; snapped = true; }
+        if (!snapped && Math.abs(dxd) < SNAP) {
+            if (dyd > 0 && dyd < H * 1.6)       { dy = t.y + H + 2; dx = t.x; snapped = true; }
+            else if (dyd < 0 && dyd > -H * 1.6) { dy = t.y - H - 2; dx = t.x; snapped = true; }
         }
     });
+    const screenX = dx * boardScale + boardTX + rect.left;
+    const screenY = dy * boardScale + boardTY + rect.top;
+    prev.style.display = 'block';
+    prev.style.width = (W * boardScale) + 'px';
+    prev.style.height = (H * boardScale) + 'px';
+    prev.style.left = (screenX - rect.left) + 'px';
+    prev.style.top  = (screenY - rect.top)  + 'px';
+}
 
-    const updates = {};
-    if (fromBoard) {
-        updates[`board/${tileId}/x`] = dropX;
-        updates[`board/${tileId}/y`] = dropY;
-    } else {
-        const td = myHandData.find(t => t.id === tileId);
-        if (!td) return;
-        const { id, ...clean } = td;
-        updates[`board/${tileId}`] = { ...clean, x: dropX, y: dropY };
-        updates[`hands/${myName}/${tileId}`] = null;
-    }
-    db.ref('/').update(updates).then(() => playSFX('tileDrop'));
+boardWrap.addEventListener('mousemove', e => {
+    if (!placeModeActive) return;
+    updateSnapPreview(e.clientX, e.clientY);
+});
+boardWrap.addEventListener('touchmove', e => {
+    if (!placeModeActive || e.touches.length !== 1) return;
+    updateSnapPreview(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: true });
+boardWrap.addEventListener('mouseleave', () => {
+    if (!placeModeActive) return;
+    document.getElementById('snap-preview').style.display = 'none';
+});
+
+/* ================================================
+   보드 타일: 탭으로 랙 복귀 (원래 타일은 불가)
+================================================ */
+function onBoardTileClick(e, id) {
+    e.stopPropagation();
+    if (myRole !== 'player' || currentTurn !== myName) return;
+    if (placeModeActive) return;
+    if (initialBoardState[id]) return; // 잠긴 타일
+    returnTileToRack(id);
 }
 
 function returnTileToRack(tileId) {
@@ -1260,8 +1252,11 @@ function renderRack() {
     }
 
     const isLandscape = window.innerWidth > window.innerHeight;
-    const TILE_W = isLandscape ? 38 : 46;
-    const totalW = sorted.length * TILE_W + 100;
+    // ★ 타일 간격: 타일 너비 + 4px 갭
+    const { W } = getTileSize();
+    const STEP = W + 4;
+    const SIDE_PAD = 10;
+    const totalW = sorted.length * STEP + SIDE_PAD * 2 + 60; // 60 = sort 버튼 공간
     inner.style.width = Math.max(totalW, window.innerWidth) + 'px';
 
     sorted.forEach((t, i) => {
@@ -1269,34 +1264,17 @@ function renderRack() {
         div.id = 'rack-' + t.id;
         div.className = `tile rack-tile ${t.color}`;
         div.innerText = t.num;
-        div.style.left = (i * TILE_W + 10) + 'px';
+        div.style.left = (SIDE_PAD + i * STEP) + 'px';
 
         if (t.id === selectedTileId) div.classList.add('selected-tile');
 
+        // 클릭: 배치 모드 진입/취소
         div.addEventListener('click', (e) => {
             e.stopPropagation();
             if (myRole !== 'player' || currentTurn !== myName) return;
-
-            if (selectedTileId === t.id) {
-                cancelPlaceMode();
-                return;
-            }
-            cancelPlaceMode();
-            selectedTileId = t.id;
-            placeModeActive = true;
-            div.classList.add('selected-tile');
-            document.getElementById('place-mode-hint').style.display = 'block';
-            playSFX('tilePick');
+            if (selectedTileId === t.id) { cancelPlaceMode(); return; }
+            enterPlaceMode(t.id, div);
         });
-
-        div.addEventListener('touchstart', (e) => {
-            const tid = t.id;
-            const longPressTimer = setTimeout(() => {
-                cancelPlaceMode();
-                startTileDrag(e, tid, false);
-            }, 180);
-            div.addEventListener('touchend', () => clearTimeout(longPressTimer), { once: true });
-        }, { passive: true });
 
         inner.appendChild(div);
     });
@@ -1312,27 +1290,18 @@ function renderBoard() {
     Object.entries(boardTiles).forEach(([id, data]) => {
         if (!data || data.num === undefined) return;
         const div = document.createElement('div');
-        div.className = `tile ${data.color}`;
+        const isLocked = !!initialBoardState[id];
+        div.className = `tile ${data.color}${isLocked ? ' locked' : ' new-tile'}`;
         div.id = id;
         div.innerText = data.num;
         div.style.position = 'absolute';
         div.style.left = data.x + 'px';
         div.style.top  = data.y + 'px';
 
-        div.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (myRole !== 'player' || currentTurn !== myName) return;
-            if (placeModeActive) return;
-            if (initialBoardState[id]) return;
-            returnTileToRack(id);
-        });
-
-        div.addEventListener('touchstart', (e) => {
-            if (myRole !== 'player' || currentTurn !== myName) return;
-            if (placeModeActive) return;
-            const longPress = setTimeout(() => startTileDrag(e, id, true), 180);
-            div.addEventListener('touchend', () => clearTimeout(longPress), { once: true });
-        }, { passive: true });
+        // 잠긴 타일은 상호작용 없음, 새 타일은 탭으로 랙 복귀
+        if (!isLocked) {
+            div.addEventListener('click', (e) => onBoardTileClick(e, id));
+        }
 
         canvas.appendChild(div);
     });
@@ -1450,20 +1419,39 @@ function isValidSet(tiles) {
         for (let i = 0; i < nums.length - 1; i++) gap += nums[i+1] - nums[i] - 1;
         if (gap > jokers.length) return false;
         const remaining = jokers.length - gap;
-        return (nums[0] - remaining >= 1 || remaining === 0) && (nums[nums.length-1] + 0 <= 13);
+        return (nums[0] - remaining >= 1 || remaining === 0) && (nums[nums.length-1] <= 13);
     };
     return isGroup() || isRun();
 }
 
 function validateBoard() {
-    const rows = {};
-    Object.values(boardTiles).forEach(t => { if (!rows[t.y]) rows[t.y]=[]; rows[t.y].push(t); });
-    for (let y in rows) {
-        const rt = rows[y].sort((a,b) => a.x - b.x);
+    const { W, H } = getTileSize();
+    const SAME_ROW_THRESH = H * 0.6;
+    const GAP_THRESH = W * 1.4;
+
+    // y좌표 기준으로 그룹화 (같은 줄로 볼 threshold)
+    const tiles = Object.values(boardTiles);
+    if (tiles.length === 0) return true;
+
+    // y 클러스터링
+    const rows = [];
+    const used = new Array(tiles.length).fill(false);
+    tiles.forEach((t, i) => {
+        if (used[i]) return;
+        const row = [t]; used[i] = true;
+        tiles.forEach((u, j) => {
+            if (!used[j] && Math.abs(u.y - t.y) < SAME_ROW_THRESH) { row.push(u); used[j] = true; }
+        });
+        rows.push(row);
+    });
+
+    for (const row of rows) {
+        row.sort((a, b) => a.x - b.x);
         let cur = [];
-        for (let i = 0; i < rt.length; i++) {
-            cur.push(rt[i]);
-            if (!rt[i+1] || rt[i+1].x - rt[i].x > 55) {
+        for (let i = 0; i < row.length; i++) {
+            cur.push(row[i]);
+            const next = row[i + 1];
+            if (!next || next.x - row[i].x > GAP_THRESH) {
                 if (!isValidSet(cur)) return false;
                 cur = [];
             }
@@ -1486,16 +1474,25 @@ function handleTurnEnd() {
     db.ref(`players/${myName}/registered`).once('value', snap => {
         const isReg = snap.val();
         if (!isReg) {
+            const { W } = getTileSize();
+            const GAP_THRESH = W * 1.4;
             let isPiggy = false;
             const rows = {};
-            Object.entries(boardTiles).forEach(([id, t]) => { t.id = id; if (!rows[t.y]) rows[t.y]=[]; rows[t.y].push(t); });
-            for (let y in rows) {
-                const rt = rows[y].sort((a,b) => a.x - b.x);
+            Object.entries(boardTiles).forEach(([id, t]) => {
+                t._id = id;
+                const key = Math.round(t.y / 10) * 10;
+                if (!rows[key]) rows[key] = [];
+                rows[key].push({ ...t, _id: id });
+            });
+            for (let key in rows) {
+                const rt = rows[key].sort((a, b) => a.x - b.x);
                 let cur = [];
                 for (let i = 0; i < rt.length; i++) {
                     cur.push(rt[i]);
-                    if (!rt[i+1] || rt[i+1].x - rt[i].x > 55) {
-                        if (cur.some(t => initialBoardState[t.id]) && cur.some(t => !initialBoardState[t.id])) isPiggy = true;
+                    if (!rt[i+1] || rt[i+1].x - rt[i].x > GAP_THRESH) {
+                        const hasOld = cur.some(t => initialBoardState[t._id]);
+                        const hasNew = cur.some(t => !initialBoardState[t._id]);
+                        if (hasOld && hasNew) isPiggy = true;
                         cur = [];
                     }
                 }
@@ -1558,38 +1555,73 @@ function setSortMode(m) {
 }
 
 /* ================================================
-   힌트
+   힌트 — 손패 + 보드 새 타일 조합 고려
 ================================================ */
 function showHint() {
     if (myRole !== 'player' || currentTurn !== myName) return alert('내 차례에만 사용할 수 있습니다.');
-    document.querySelectorAll('.hint-target').forEach(t => t.classList.remove('hint-target'));
-    const sets = [];
+    document.querySelectorAll('.tile.hint-target').forEach(t => t.classList.remove('hint-target'));
+
     const hand = [...myHandData];
+    if (hand.length === 0) return alert('손패가 없습니다.');
+
+    const coMap = { red:1, blue:2, yellow:3, black:4, joker:5 };
+    const hintIds = new Set();
+
+    // 같은 숫자 그룹 (3개 이상, 다른 색)
     const numMap = {};
     hand.forEach(t => {
         if (t.num === 'J') return;
         if (!numMap[t.num]) numMap[t.num] = [];
         if (!numMap[t.num].find(i => i.color === t.color)) numMap[t.num].push(t);
     });
-    Object.values(numMap).forEach(g => { if (g.length >= 3) sets.push(g.map(t => t.id)); });
-    const coMap2 = { red:[], blue:[], yellow:[], black:[] };
-    hand.forEach(t => { if (t.num !== 'J') coMap2[t.color].push(t); });
-    Object.values(coMap2).forEach(tiles => {
-        tiles.sort((a,b) => Number(a.num) - Number(b.num));
-        let run = [];
-        for (let t of tiles) {
-            if (!run.length || Number(t.num) === Number(run[run.length-1].num)+1) run.push(t);
-            else { if (run.length >= 3) sets.push(run.map(t => t.id)); run = [t]; }
-        }
-        if (run.length >= 3) sets.push(run.map(t => t.id));
+    Object.values(numMap).forEach(g => {
+        if (g.length >= 3) g.forEach(t => hintIds.add(t.id));
     });
-    if (!sets.length) return alert('현재 낼 수 있는 타일이 없습니다.');
-    const allIds = new Set(sets.flat());
-    allIds.forEach(id => {
+
+    // 같은 색 연속 숫자 런 (3개 이상)
+    const colMap = { red:[], blue:[], yellow:[], black:[] };
+    hand.forEach(t => { if (t.num !== 'J' && colMap[t.color]) colMap[t.color].push(t); });
+    Object.values(colMap).forEach(tiles => {
+        tiles.sort((a, b) => Number(a.num) - Number(b.num));
+        let run = [tiles[0]];
+        for (let i = 1; i < tiles.length; i++) {
+            if (Number(tiles[i].num) === Number(run[run.length-1].num) + 1) {
+                run.push(tiles[i]);
+            } else {
+                if (run.length >= 3) run.forEach(t => hintIds.add(t.id));
+                run = [tiles[i]];
+            }
+        }
+        if (run.length >= 3) run.forEach(t => hintIds.add(t.id));
+    });
+
+    // 조커 포함 런/그룹 체크
+    const jokers = hand.filter(t => t.num === 'J');
+    if (jokers.length > 0) {
+        // 조커가 있으면 2개짜리 그룹/런도 힌트
+        Object.values(numMap).forEach(g => {
+            if (g.length >= 2) g.forEach(t => { hintIds.add(t.id); jokers.forEach(j => hintIds.add(j.id)); });
+        });
+        Object.values(colMap).forEach(tiles => {
+            tiles.sort((a, b) => Number(a.num) - Number(b.num));
+            let run = [tiles[0]];
+            for (let i = 1; i < tiles.length; i++) {
+                if (Number(tiles[i].num) <= Number(run[run.length-1].num) + 2) {
+                    run.push(tiles[i]);
+                } else { run = [tiles[i]]; }
+            }
+            if (run.length >= 2) { run.forEach(t => hintIds.add(t.id)); jokers.forEach(j => hintIds.add(j.id)); }
+        });
+        jokers.forEach(t => hintIds.add(t.id));
+    }
+
+    if (hintIds.size === 0) return alert('현재 낼 수 있는 타일이 없습니다.');
+
+    hintIds.forEach(id => {
         const el = document.getElementById('rack-' + id);
         if (el) el.classList.add('hint-target');
     });
-    setTimeout(() => document.querySelectorAll('.hint-target').forEach(t => t.classList.remove('hint-target')), 5000);
+    setTimeout(() => document.querySelectorAll('.tile.hint-target').forEach(t => t.classList.remove('hint-target')), 5000);
 }
 
 /* ================================================
@@ -1621,8 +1653,8 @@ async function renderLobbyUI() {
 
     mb.innerHTML = `
         <h2>🎮 루미큐브 대기실</h2>
-        <div style="margin-bottom:12px; background:rgba(128,128,128,0.08); padding:9px; border-radius:12px;">${tags}</div>
-        <div style="margin-bottom:10px; text-align:center;">
+        <div style="margin-bottom:12px;background:rgba(128,128,128,0.08);padding:9px;border-radius:12px;">${tags}</div>
+        <div style="margin-bottom:10px;text-align:center;">
             <button class="mode-btn${gameMode==='normal'?' selected':''}" onclick="db.ref('settings/gameMode').set('normal')">보통 (4인)</button>
             <button class="mode-btn${gameMode==='expert'?' selected':''}" onclick="db.ref('settings/gameMode').set('expert')">전문가 (6인)</button>
         </div>
@@ -1634,21 +1666,20 @@ async function renderLobbyUI() {
         ${isHost
             ? `<button class="modal-btn green" onclick="startGame()">게임 시작</button>
                <button class="modal-btn red-btn" id="btn-force-lobby-m" onclick="returnToLobby()" style="margin-top:6px;">리셋</button>`
-            : `<p style="color:var(--gold);text-align:center;font-size:0.83rem;">방장이 게임을 시작하기를 기다리는 중...</p>
-               <button class="modal-btn gray" id="btn-force-lobby-m" style="display:none;" onclick="returnToLobby()">리셋</button>`
+            : `<p style="color:var(--gold);text-align:center;font-size:0.83rem;">방장이 게임을 시작하기를 기다리는 중...</p>`
         }
         <div style="margin-top:12px;">
-            <b style="font-size:0.78rem; display:block; margin-bottom:5px;">테마</b>
+            <b style="font-size:0.78rem;display:block;margin-bottom:5px;">테마</b>
             <div style="display:flex;flex-wrap:wrap;gap:5px;">
-                <button class="theme-btn-m classic" onclick="setTheme('classic')">⚪</button>
-                <button class="theme-btn-m dark"    onclick="setTheme('dark')">⚫</button>
-                <button class="theme-btn-m pink"    onclick="setTheme('pink')">🎀</button>
-                <button class="theme-btn-m vintage" onclick="setTheme('vintage')">🪞</button>
-                <button class="theme-btn-m kitty"   onclick="setTheme('kitty')">❤</button>
-                <button class="theme-btn-m cinnamoroll" onclick="setTheme('cinnamoroll')">☁️</button>
-                <button class="theme-btn-m pochacco"    onclick="setTheme('pochacco')">🐾</button>
-                <button class="theme-btn-m navy"    onclick="setTheme('navy')">🌊</button>
-                <button class="theme-btn-m cyber"   onclick="setTheme('cyber')">⚡</button>
+                <button class="theme-btn-m classic"     onclick="setTheme('classic')">⚪</button>
+                <button class="theme-btn-m dark"         onclick="setTheme('dark')">⚫</button>
+                <button class="theme-btn-m pink"         onclick="setTheme('pink')">🎀</button>
+                <button class="theme-btn-m vintage"      onclick="setTheme('vintage')">🪞</button>
+                <button class="theme-btn-m kitty"        onclick="setTheme('kitty')">❤</button>
+                <button class="theme-btn-m cinnamoroll"  onclick="setTheme('cinnamoroll')">☁️</button>
+                <button class="theme-btn-m pochacco"     onclick="setTheme('pochacco')">🐾</button>
+                <button class="theme-btn-m navy"         onclick="setTheme('navy')">🌊</button>
+                <button class="theme-btn-m cyber"        onclick="setTheme('cyber')">⚡</button>
             </div>
         </div>
     `;
@@ -1729,8 +1760,7 @@ function returnToLobby() {
    채팅
 ================================================ */
 function toggleChatPanel() {
-    const p = document.getElementById('chat-panel');
-    p.classList.toggle('open');
+    document.getElementById('chat-panel').classList.toggle('open');
 }
 function sendChat() {
     const inp = document.getElementById('chat-input-m');
@@ -1823,8 +1853,13 @@ window.onload = function() {
             else document.getElementById('entry-overlay').style.display = 'flex';
         }, 200);
 
-        boardScale = 0.7; boardTX = 40; boardTY = 40;
+        // 초기 보드 뷰
+        boardScale = 1.0; boardTX = 30; boardTY = 30;
         applyBoardTransform();
+
+        // 방향 변경 시 랙 다시 렌더
+        window.addEventListener('orientationchange', () => setTimeout(renderRack, 200));
+        window.addEventListener('resize', () => setTimeout(renderRack, 200));
 
         db.ref('settings/status').on('value', snap => {
             gameStatus = snap.val() || 'waiting';
@@ -1887,8 +1922,7 @@ window.onload = function() {
                 if (el) el.disabled = !isMy;
             });
 
-            const bw = document.getElementById('board-wrap');
-            bw.classList.toggle('not-my-turn', !isMy);
+            boardWrap.classList.toggle('not-my-turn', !isMy);
 
             if (isMy) {
                 playSFX('turnAlarm');
