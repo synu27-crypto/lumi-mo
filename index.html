@@ -16,7 +16,7 @@
   --modal-bg:#fff; --border:rgba(0,0,0,.08);
   --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
   --topbar:44px; --actbar:44px; --rack:108px;
-  --tw:44px; --th:62px; /* JS의 TW/TH 와 동기 */
+  --tw:44px; --th:62px;
 }
 body[data-theme=dark]{--bg:#0d0d0f;--panel:#17181c;--board-bg:#111215;--rack-bg:#0d0d0f;--text:#e8e8f0;--tile-bg:#d8d8e0;--tile-sh:#1a1a20;--border:rgba(255,255,255,.06);--modal-bg:#1c1d22}
 body[data-theme=pink]{--bg:#fff0f7;--panel:#ffd6e8;--board-bg:#ffe8f3;--rack-bg:#ffb6d4;--text:#b5005b;--tile-bg:#fff5f8;--tile-sh:#e8789a;--border:rgba(255,105,180,.2);--modal-bg:#fff0f7}
@@ -36,7 +36,14 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;font-family:
 /* ── 상단 바 ── */
 #topbar{height:var(--topbar);flex-shrink:0;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 8px;gap:5px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
 #topbar::-webkit-scrollbar{display:none}
-.pbadge{display:inline-flex;align-items:center;gap:4px;background:rgba(128,128,128,.1);border:1.5px solid var(--border);border-radius:20px;padding:3px 8px;font-size:.68rem;font-weight:800;white-space:nowrap;flex-shrink:0;transition:all .2s;position:relative}
+.pbadge{
+  display:inline-flex;align-items:center;gap:4px;
+  background:rgba(128,128,128,.1);border:1.5px solid var(--border);border-radius:20px;
+  padding:3px 8px;font-size:.68rem;font-weight:800;white-space:nowrap;flex-shrink:0;
+  transition:all .2s;position:relative;
+  /* ★ FIX 2: 말풍선이 보드판 뒤로 숨지 않도록 stacking context 생성 */
+  isolation:isolate;
+}
 .pbadge.active{background:rgba(52,152,219,.2);border-color:var(--blue);color:var(--blue);box-shadow:0 0 8px rgba(52,152,219,.3)}
 .pbadge .cnt{background:var(--text);color:var(--bg);padding:1px 4px;border-radius:7px;font-size:.65rem;font-weight:900}
 #pool-info{margin-left:auto;background:var(--purple);color:#fff;border-radius:10px;padding:3px 7px;font-size:.63rem;font-weight:800;white-space:nowrap;flex-shrink:0}
@@ -73,17 +80,22 @@ body[data-theme=cyber] #board-wrap{background-image:linear-gradient(rgba(0,255,2
 #btn-spec{background:rgba(155,89,182,.3);color:var(--text);border:1.5px solid var(--purple);min-width:50px;max-width:50px;flex:none;font-size:.62rem}
 
 /* ── 랙 ── */
+/* ★ FIX 3: overflow-x:scroll + touch-action:pan-x 랙 가로 스크롤 */
 #rack-wrap{
   height:var(--rack);flex-shrink:0;background:var(--rack-bg);
   border-top:2px solid var(--border);position:relative;
-  /* ★ 핵심: overflow-x scroll + touch-action pan-x 로 가로 스크롤 보장 */
   overflow-x:scroll;overflow-y:hidden;
   -webkit-overflow-scrolling:touch;
   touch-action:pan-x;
 }
 #rack-wrap::-webkit-scrollbar{display:none}
-#rack-inner{position:relative;height:100%;display:flex;align-items:center;padding:0 10px}
-/* ★ flex + inline-size로 타일들이 줄 안 바꾸고 가로 스크롤 */
+#rack-inner{
+  /* ★ FIX 3: min-width:max-content 으로 타일이 줄바꿈 없이 가로로 나열 */
+  position:relative;height:100%;
+  display:flex;align-items:center;
+  padding:0 10px;
+  min-width:max-content;
+}
 
 #sort-btns{position:absolute;top:4px;right:6px;display:flex;gap:3px;z-index:10}
 .sbtn{padding:2px 6px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.15);color:var(--text);font-size:.58rem;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer}
@@ -106,14 +118,47 @@ body[data-theme=cyber] #board-wrap{background-image:linear-gradient(rgba(0,255,2
 .tile.joker {color:#8e44ad;font-size:1.35rem}
 /* 보드 타일은 absolute */
 #board-canvas .tile{position:absolute;transition:none}
-/* 랙 타일은 flex item (position:static 유지) */
+/* 랙 타일은 flex item */
 #rack-inner .tile{position:relative;margin:0 2px}
 
 .tile.sel{box-shadow:0 0 0 3px var(--blue),0 6px 18px rgba(52,152,219,.4)!important;transform:scale(1.08) translateY(-5px)!important;z-index:200!important}
+/* ★ FIX 1: locked → 등록 전(initBoard 기준)만 잠금; 현재 턴 배치 타일은 항상 이동 가능 */
 .tile.locked{opacity:.85;cursor:default}
 .tile.newtile{box-shadow:0 3px 0 var(--tile-sh),0 0 0 1.5px rgba(52,152,219,.55),0 4px 8px rgba(0,0,0,.12)}
 
-/* ★ 힌트 — !important 로 다른 스타일에 묻히지 않게 */
+/* ★ FIX 6: 드래그 중 타일 스타일 */
+.tile.dragging{
+  opacity:.55;
+  pointer-events:none;
+}
+/* 드래그 고스트 */
+#drag-ghost{
+  position:fixed;
+  pointer-events:none;
+  z-index:999999;
+  display:none;
+  transform-origin:center center;
+}
+#drag-ghost .tile{
+  box-shadow:0 8px 24px rgba(0,0,0,.3),0 0 0 2px var(--blue)!important;
+  transform:scale(1.12) rotate(3deg)!important;
+}
+
+/* ★ FIX 2: 말풍선 z-index를 최상위로 */
+.bubble{
+  position:absolute;
+  top:calc(100% + 4px);left:50%;transform:translateX(-50%);
+  background:#fff;color:#000;padding:3px 8px;border-radius:10px;
+  font-size:.73rem;font-weight:700;white-space:nowrap;
+  pointer-events:none;
+  z-index:999999; /* ★ 보드판(board-wrap)보다 위 */
+  animation:bpop 2.5s ease-in-out forwards;
+  box-shadow:0 2px 8px rgba(0,0,0,.2)
+}
+.bubble::after{content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:#fff;border-top:none}
+@keyframes bpop{0%{opacity:0;transform:translate(-50%,-8px) scale(.5)}10%{opacity:1;transform:translate(-50%,0) scale(1.15)}20%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,12px)}}
+
+/* 힌트 */
 .tile.hint{
   animation:hint-pulse .8s ease-in-out infinite!important;
   z-index:150!important;
@@ -174,11 +219,6 @@ body[data-theme=cyber] #board-wrap{background-image:linear-gradient(rgba(0,255,2
 #chat-input{flex:1;padding:9px 11px;border-radius:18px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Nunito',sans-serif;font-size:.85rem;outline:none}
 #chat-send{padding:9px 14px;border-radius:18px;border:none;background:var(--blue);color:#fff;font-weight:900;font-size:.82rem;cursor:pointer}
 
-/* ── 이모트 말풍선 ── */
-.bubble{position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#fff;color:#000;padding:3px 8px;border-radius:10px;font-size:.73rem;font-weight:700;white-space:nowrap;pointer-events:none;z-index:99999;animation:bpop 2.5s ease-in-out forwards;box-shadow:0 2px 8px rgba(0,0,0,.2)}
-.bubble::after{content:'';position:absolute;top:-5px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:#fff;border-top:none}
-@keyframes bpop{0%{opacity:0;transform:translate(-50%,-8px) scale(.5)}10%{opacity:1;transform:translate(-50%,0) scale(1.15)}20%{transform:translate(-50%,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,12px)}}
-
 /* ── 관전자 손패 ── */
 #spec-modal{position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:2px solid var(--border);border-radius:20px 20px 0 0;z-index:45000;padding:12px 12px calc(16px + var(--safe-b));transform:translateY(100%);transition:transform .3s ease;max-height:60vh;overflow-y:auto}
 #spec-modal.open{transform:translateY(0)}
@@ -215,6 +255,10 @@ body[data-theme=vintage].tile{background:linear-gradient(145deg,#fdf6ec,#f0e0c8)
 </style>
 </head>
 <body data-theme="classic">
+
+<!-- ★ FIX 6: 드래그 고스트 엘리먼트 -->
+<div id="drag-ghost"><div class="tile" id="drag-ghost-tile"></div></div>
+
 <div id="app">
   <!-- 상단 바 -->
   <div id="topbar">
@@ -319,6 +363,10 @@ let myHand=[], boardTiles={}, initBoard={};
 let sortMode='color', manualOrder=[];
 let selId=null, placeMode=false;
 let turnTimer=null;
+
+/* ★ FIX 4: 화면 방향 변경 시 좌표 재계산용 — 직전 TW/TH 기억 */
+let lastTW=TW(), lastTH=TH();
+
 window.pdata={};
 window.lastCounts={};
 window.isEnding=false;
@@ -348,10 +396,9 @@ function setTheme(n){
 
 /* ══════════════════════════════════════════════
    보드 변환 — 줌/패닝
-   ★ fitBoard 는 최초 로드 1회만 호출, 이후 사용자 줌 유지
 ══════════════════════════════════════════════ */
 let bScale=1, bTX=20, bTY=20;
-let boardInitialized=false; // 최초 fit 완료 여부
+let boardInitialized=false;
 
 function applyTransform(){
   document.getElementById('board-canvas').style.transform=
@@ -359,7 +406,6 @@ function applyTransform(){
 }
 
 function fitBoard(){
-  // 타일 없으면 기본값만
   if(Object.keys(boardTiles).length===0){
     bScale=1; bTX=20; bTY=20; applyTransform(); return;
   }
@@ -392,7 +438,7 @@ BW.addEventListener('touchstart',e=>{
     pinchS0=bScale;
     e.preventDefault();
   } else if(e.touches.length===1){
-    if(placeMode) return; // 배치 모드 중엔 탭 처리로
+    if(placeMode) return;
     panning=true; panMoved=false;
     panX0=e.touches[0].clientX; panY0=e.touches[0].clientY;
     panTX0=bTX; panTY0=bTY;
@@ -409,7 +455,6 @@ BW.addEventListener('touchmove',e=>{
     if(Math.abs(dx)>4||Math.abs(dy)>4) panMoved=true;
     bTX=panTX0+dx; bTY=panTY0+dy;
     applyTransform(); e.preventDefault();
-    // 스냅 미리보기 업데이트
     if(placeMode) showSnapPrev(e.touches[0].clientX,e.touches[0].clientY);
   }
 },{passive:false});
@@ -417,7 +462,6 @@ BW.addEventListener('touchmove',e=>{
 BW.addEventListener('touchend',e=>{
   if(e.touches.length<2) pinching=false;
   if(e.touches.length===0){
-    // 배치 모드 탭 처리 — 움직이지 않았을 때만
     if(placeMode&&!panMoved&&selId){
       const t=e.changedTouches[0];
       doBoardPlace(t.clientX,t.clientY);
@@ -427,7 +471,6 @@ BW.addEventListener('touchend',e=>{
   }
 },{passive:true});
 
-/* 마우스 (PC 테스트용) */
 BW.addEventListener('click',e=>{
   if(!placeMode||!selId) return;
   doBoardPlace(e.clientX,e.clientY);
@@ -438,20 +481,15 @@ const SNAP_EL=document.getElementById('snap-prev');
 function showSnapPrev(cx,cy){
   if(!placeMode){hidSnapPrev();return}
   const {x,y}=calcDrop(cx,cy);
-  const r=BW.getBoundingClientRect();
-  const sx=x*bScale+bTX, sy=y*bScale+bTY;
   SNAP_EL.style.display='block';
   SNAP_EL.style.width=(TW()*bScale)+'px';
   SNAP_EL.style.height=(TH()*bScale)+'px';
-  SNAP_EL.style.left=sx+'px';
-  SNAP_EL.style.top=sy+'px';
+  SNAP_EL.style.left=(x*bScale+bTX)+'px';
+  SNAP_EL.style.top=(y*bScale+bTY)+'px';
 }
 function hidSnapPrev(){ SNAP_EL.style.display='none' }
 BW.addEventListener('mousemove',e=>{ if(placeMode) showSnapPrev(e.clientX,e.clientY) });
 BW.addEventListener('mouseleave',hidSnapPrev);
-BW.addEventListener('touchmove',e=>{
-  if(placeMode&&e.touches.length===1) showSnapPrev(e.touches[0].clientX,e.touches[0].clientY);
-},{passive:true});
 
 /* ── 좌표 계산 + 스냅 ── */
 function calcDrop(cx,cy){
@@ -477,16 +515,21 @@ function calcDrop(cx,cy){
 }
 
 /* ── 보드에 배치 ── */
+/* ★ FIX 5: race condition 방지 — debounce flag */
+let placing=false;
 function doBoardPlace(cx,cy){
-  if(!selId) return;
+  if(!selId||placing) return;
   const td=myHand.find(t=>t.id===selId);
   if(!td){cancelPlace();return}
+  placing=true;
   const {x,y}=calcDrop(cx,cy);
   const {id,...clean}=td;
   const up={};
   up[`board/${selId}`]={...clean,x,y};
   up[`hands/${myName}/${selId}`]=null;
-  db.ref('/').update(up).then(()=>sfx('drop'));
+  db.ref('/').update(up)
+    .then(()=>{ sfx('drop'); placing=false; })
+    .catch(()=>{ placing=false; });
   cancelPlace();
 }
 
@@ -497,7 +540,6 @@ function enterPlace(id){
   document.getElementById('place-hint').style.display='block';
   document.getElementById('cancel-btn').style.display='block';
   BW.classList.add('place-mode');
-  // 랙의 해당 타일 선택 표시
   const el=document.querySelector(`#rack-inner .tile[data-id="${id}"]`);
   if(el) el.classList.add('sel');
   sfx('pick');
@@ -512,13 +554,146 @@ function cancelPlace(){
 }
 
 /* ══════════════════════════════════════════════
+   ★ FIX 6: 드래그 이동 (랙 타일 → 보드 / 보드 타일 → 보드 내 이동)
+   - touchstart: 롱프레스 200ms 후 드래그 모드 진입
+   - touchmove: 고스트 타일을 손가락 위치로 이동
+   - touchend: 보드 위에서 놓으면 배치, 랙 위에서 놓으면 복귀
+══════════════════════════════════════════════ */
+const GHOST=document.getElementById('drag-ghost');
+const GHOST_TILE=document.getElementById('drag-ghost-tile');
+let dragId=null, dragFrom=null; // 'rack' | 'board'
+let dragLongTimer=null, isDragging=false;
+let dragOrigEl=null;
+
+function startDragGhost(tile, cx, cy){
+  GHOST_TILE.className=`tile ${tile.color}`;
+  GHOST_TILE.innerText=tile.num;
+  GHOST.style.display='block';
+  moveDragGhost(cx,cy);
+}
+function moveDragGhost(cx,cy){
+  const w=TW()*bScale, h=TH()*bScale;
+  GHOST.style.left=(cx-w/2)+'px';
+  GHOST.style.top=(cy-h/2)+'px';
+  GHOST.style.width=w+'px';
+  GHOST.style.height=h+'px';
+}
+function endDragGhost(){
+  GHOST.style.display='none';
+  if(dragOrigEl) dragOrigEl.classList.remove('dragging');
+  dragOrigEl=null;
+}
+
+/* 랙 타일 드래그 */
+function attachRackDrag(div, tile){
+  div.addEventListener('touchstart', e=>{
+    if(myRole!=='player'||currentTurn!==myName) return;
+    const t=e.touches[0];
+    // 롱프레스 200ms
+    dragLongTimer=setTimeout(()=>{
+      isDragging=true; dragId=tile.id; dragFrom='rack';
+      dragOrigEl=div;
+      div.classList.add('dragging');
+      startDragGhost(tile, t.clientX, t.clientY);
+      cancelPlace(); // 배치 모드 해제
+      e.preventDefault();
+    },200);
+  },{passive:true});
+
+  div.addEventListener('touchmove', e=>{
+    if(!isDragging) return;
+    clearTimeout(dragLongTimer);
+    const t=e.touches[0];
+    moveDragGhost(t.clientX, t.clientY);
+    showSnapPrev(t.clientX, t.clientY);
+    e.preventDefault();
+  },{passive:false});
+
+  div.addEventListener('touchend', e=>{
+    clearTimeout(dragLongTimer);
+    if(!isDragging){ // 짧은 탭 → 기존 click 모드
+      return;
+    }
+    isDragging=false;
+    const t=e.changedTouches[0];
+    hidSnapPrev();
+    endDragGhost();
+
+    // 보드 위에 드롭했는지 확인
+    const bRect=BW.getBoundingClientRect();
+    if(t.clientX>=bRect.left&&t.clientX<=bRect.right&&
+       t.clientY>=bRect.top &&t.clientY<=bRect.bottom){
+      // 보드에 배치
+      selId=dragId;
+      doBoardPlace(t.clientX, t.clientY);
+    }
+    dragId=null; dragFrom=null;
+  },{passive:true});
+
+  div.addEventListener('touchcancel', ()=>{
+    clearTimeout(dragLongTimer);
+    isDragging=false; dragId=null; dragFrom=null;
+    endDragGhost(); hidSnapPrev();
+  });
+}
+
+/* 보드 타일 드래그 (등록 전 타일만) */
+function attachBoardDrag(div, id, data){
+  div.addEventListener('touchstart', e=>{
+    if(myRole!=='player'||currentTurn!==myName) return;
+    if(initBoard[id]) return; // 잠긴 타일은 드래그 불가
+    const t=e.touches[0];
+    dragLongTimer=setTimeout(()=>{
+      isDragging=true; dragId=id; dragFrom='board';
+      dragOrigEl=div;
+      div.classList.add('dragging');
+      startDragGhost(data, t.clientX, t.clientY);
+      e.preventDefault();
+    },200);
+  },{passive:true});
+
+  div.addEventListener('touchmove', e=>{
+    if(!isDragging||dragId!==id) return;
+    clearTimeout(dragLongTimer);
+    const t=e.touches[0];
+    moveDragGhost(t.clientX, t.clientY);
+    showSnapPrev(t.clientX, t.clientY);
+    e.preventDefault();
+  },{passive:false});
+
+  div.addEventListener('touchend', e=>{
+    clearTimeout(dragLongTimer);
+    if(!isDragging||dragId!==id) return;
+    isDragging=false;
+    const t=e.changedTouches[0];
+    hidSnapPrev(); endDragGhost();
+
+    const bRect=BW.getBoundingClientRect();
+    if(t.clientX>=bRect.left&&t.clientX<=bRect.right&&
+       t.clientY>=bRect.top &&t.clientY<=bRect.bottom){
+      // 보드 내 이동
+      const {x,y}=calcDrop(t.clientX, t.clientY);
+      db.ref(`board/${id}`).update({x,y}).then(()=>sfx('drop'));
+    } else {
+      // 랙으로 복귀
+      returnToRack(id);
+    }
+    dragId=null; dragFrom=null;
+  },{passive:true});
+
+  div.addEventListener('touchcancel', ()=>{
+    clearTimeout(dragLongTimer);
+    if(dragId===id){isDragging=false;dragId=null;dragFrom=null;}
+    endDragGhost(); hidSnapPrev();
+  });
+}
+
+/* ══════════════════════════════════════════════
    랙 렌더링
-   ★ position:static flex item → overflow-x:scroll 가로 스크롤 작동
 ══════════════════════════════════════════════ */
 function renderRack(){
   if(myRole==='spectator') return;
   const inner=document.getElementById('rack-inner');
-  // 기존 타일만 제거 (sort 버튼 등 보존)
   inner.querySelectorAll('.tile').forEach(t=>t.remove());
 
   const coM={red:1,blue:2,yellow:3,black:4,joker:5};
@@ -547,13 +722,17 @@ function renderRack(){
     div.innerText=t.num;
     if(t.id===selId) div.classList.add('sel');
 
+    // 탭으로 배치 모드 진입
     div.addEventListener('click',e=>{
       e.stopPropagation();
+      if(isDragging) return; // 드래그 중엔 click 무시
       if(myRole!=='player'||currentTurn!==myName) return;
       if(selId===t.id){cancelPlace();return}
       enterPlace(t.id);
     });
 
+    // ★ FIX 6: 드래그 이벤트 부착
+    attachRackDrag(div, t);
     inner.appendChild(div);
   });
 }
@@ -566,6 +745,9 @@ function renderBoard(){
   canvas.querySelectorAll('.tile').forEach(t=>t.remove());
   Object.entries(boardTiles).forEach(([id,data])=>{
     if(!data||data.num===undefined) return;
+    /* ★ FIX 1: locked 판단을 initBoard 기준으로만
+         - 등록 완료 여부와 관계없이 initBoard(턴 시작 시 스냅샷)에 없는 타일은 이동 가능
+         - 즉, 등록 후라도 같은 턴 내에 새로 낸 타일은 이동/회수 가능 */
     const locked=!!initBoard[id];
     const div=document.createElement('div');
     div.className=`tile ${data.color}${locked?' locked':' newtile'}`;
@@ -573,24 +755,67 @@ function renderBoard(){
     div.innerText=data.num;
     div.style.left=data.x+'px';
     div.style.top=data.y+'px';
+
     if(!locked){
+      // 탭으로 랙 복귀
       div.addEventListener('click',e=>{
         e.stopPropagation();
+        if(isDragging) return;
         if(myRole!=='player'||currentTurn!==myName||placeMode) return;
         returnToRack(id);
       });
+      // ★ FIX 6: 보드 타일 드래그
+      attachBoardDrag(div, id, data);
     }
     canvas.appendChild(div);
   });
 }
 
 function returnToRack(id){
+  /* ★ FIX 5: race condition — 이미 board에 없으면 무시 */
+  if(!boardTiles[id]) return;
   db.ref(`board/${id}`).once('value',s=>{
     if(!s.exists()) return;
     const {x,y,...clean}=s.val();
     db.ref('/').update({[`hands/${myName}/${id}`]:clean,[`board/${id}`]:null})
       .then(()=>sfx('pick'));
   });
+}
+
+/* ══════════════════════════════════════════════
+   ★ FIX 4: 화면 방향 전환 시 보드 타일 좌표 재계산
+   - 세로→가로: TW 44→36, TH 62→50
+   - 가로→세로: TW 36→44, TH 50→62
+   - 비율로 모든 보드 타일 x,y 를 일괄 스케일
+══════════════════════════════════════════════ */
+function rescaleBoardOnOrientationChange(){
+  const newTW=TW(), newTH=TH();
+  if(newTW===lastTW&&newTH===lastTH) return;
+  const ratioX=newTW/lastTW, ratioY=newTH/lastTH;
+  lastTW=newTW; lastTH=newTH;
+
+  const keys=Object.keys(boardTiles);
+  if(!keys.length) return;
+
+  const up={};
+  keys.forEach(k=>{
+    const t=boardTiles[k];
+    if(t&&t.x!==undefined){
+      up[`board/${k}/x`]=Math.round(t.x*ratioX);
+      up[`board/${k}/y`]=Math.round(t.y*ratioY);
+    }
+  });
+  if(Object.keys(up).length){
+    db.ref('/').update(up).then(()=>{
+      // initBoard도 재계산
+      const newInit={};
+      Object.entries(initBoard).forEach(([k,v])=>{
+        newInit[k]={...v,x:Math.round((v.x||0)*ratioX),y:Math.round((v.y||0)*ratioY)};
+      });
+      initBoard=newInit;
+      setTimeout(fitBoard,100);
+    });
+  }
 }
 
 /* ══════════════════════════════════════════════
@@ -662,7 +887,6 @@ function validateBoard(){
   const ROW_T=h*.6, GAP_T=w*1.5;
   const tiles=Object.values(boardTiles);
   if(!tiles.length) return true;
-  // y 클러스터링
   const rows=[]; const used=new Array(tiles.length).fill(false);
   tiles.forEach((t,i)=>{
     if(used[i]) return;
@@ -769,21 +993,14 @@ function setSort(m){
 
 /* ══════════════════════════════════════════════
    힌트
-   ★ DOM 직접 쿼리 + setTimeout 으로 렌더 후 적용 보장
 ══════════════════════════════════════════════ */
 function showHint(){
   if(myRole!=='player'||currentTurn!==myName) return alert('내 차례에만 사용할 수 있습니다.');
-
-  // 기존 힌트 클리어
   document.querySelectorAll('.tile.hint').forEach(t=>t.classList.remove('hint'));
-
   const hand=[...myHand];
   if(!hand.length) return alert('손패가 없습니다.');
-
   const hintIds=new Set();
   const jokers=hand.filter(t=>t.num==='J');
-
-  // ① 같은 숫자 그룹 (3개 이상, 다른 색)
   const numMap={};
   hand.forEach(t=>{
     if(t.num==='J') return;
@@ -792,11 +1009,8 @@ function showHint(){
   });
   Object.values(numMap).forEach(g=>{
     if(g.length>=3) g.forEach(t=>hintIds.add(t.id));
-    // 조커로 보완
     if(g.length===2&&jokers.length){ g.forEach(t=>hintIds.add(t.id)); jokers.forEach(j=>hintIds.add(j.id)) }
   });
-
-  // ② 같은 색 연속 런 (3개 이상)
   const colMap={red:[],blue:[],yellow:[],black:[]};
   hand.forEach(t=>{ if(t.num!=='J'&&colMap[t.color]) colMap[t.color].push(t) });
   Object.values(colMap).forEach(ts=>{
@@ -805,21 +1019,15 @@ function showHint(){
     for(let i=1;i<ts.length;i++){
       const gap=+ts[i].num - +run[run.length-1].num;
       if(gap===1) run.push(ts[i]);
-      else if(gap===2&&jokers.length){ run.push(ts[i]) } // 조커로 구멍 메우기
+      else if(gap===2&&jokers.length){ run.push(ts[i]) }
       else{ if(run.length>=3) run.forEach(t=>hintIds.add(t.id)); run=[ts[i]] }
     }
     if(run.length>=3) run.forEach(t=>hintIds.add(t.id));
   });
-
-  // 조커 자체도 힌트에 포함 (뭔가에 쓸 수 있을 때)
   if(hintIds.size>0) jokers.forEach(j=>hintIds.add(j.id));
-
   if(!hintIds.size) return alert('현재 낼 수 있는 타일이 없습니다.');
-
-  // ★ setTimeout 0 으로 현재 렌더 사이클 이후에 DOM 조작
   setTimeout(()=>{
     hintIds.forEach(id=>{
-      // data-id 속성으로 탐색
       const el=document.querySelector(`#rack-inner .tile[data-id="${id}"]`);
       if(el){ el.classList.add('hint') }
     });
@@ -1100,9 +1308,15 @@ window.onload=function(){
 
     bScale=.85; bTX=20; bTY=20; applyTransform();
 
-    // 방향 전환 시 랙 재렌더 (타일 크기 변경)
-    window.addEventListener('orientationchange',()=>setTimeout(renderRack,300));
-    window.addEventListener('resize',()=>setTimeout(renderRack,300));
+    /* ★ FIX 3+4: 방향 전환 시 랙 재렌더 + 보드 좌표 재계산 */
+    function handleResize(){
+      setTimeout(()=>{
+        rescaleBoardOnOrientationChange();
+        renderRack();
+      },350); // orientationchange 완료 대기
+    }
+    window.addEventListener('orientationchange', handleResize);
+    window.addEventListener('resize', handleResize);
 
     db.ref('settings/status').on('value',snap=>{
       gameStatus=snap.val()||'waiting';
@@ -1156,9 +1370,7 @@ window.onload=function(){
       BW.classList.toggle('dim',!isMy);
       if(isMy){
         sfx('turn');
-        // ★ initBoard 갱신만, 줌은 건드리지 않음
         initBoard=JSON.parse(JSON.stringify(boardTiles));
-        // 보드에 타일이 전혀 없을 때만 한 번 핏
         if(!boardInitialized&&Object.keys(boardTiles).length>0){
           boardInitialized=true; fitBoard();
         }
@@ -1182,7 +1394,6 @@ window.onload=function(){
       boardTiles=snap.val()||{};
       updateRegScore();
       renderBoard();
-      // ★ 최초 1회만 fitBoard — 이후 사용자 줌 유지
       if(boardFirstLoad&&Object.keys(boardTiles).length>0){
         boardFirstLoad=false; boardInitialized=true;
         setTimeout(fitBoard,150);
